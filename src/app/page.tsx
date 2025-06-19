@@ -10,15 +10,7 @@ import Image from 'next/image';
 import { useRole } from '@/contexts/RoleContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-
-const memberFeatures = [
-  { title: 'Group Wallets', description: 'Manage collective savings securely.', icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'community finance' },
-  { title: 'Contributions', description: 'Contribute tokens to your group.', icon: Wallet, href: '/contributions', cta: 'Make Contribution', img: 'https://placehold.co/600x400.png', hint: 'digital currency' },
-  { title: 'Smart Loans', description: 'Access automated micro-loans.', icon: Repeat, href: '/loans', cta: 'Apply for Loan', img: 'https://placehold.co/600x400.png', hint: 'loan agreement' },
-  { title: 'Transparent Records', description: 'View all immutable transactions.', icon: History, href: '/records', cta: 'See Ledger', img: 'https://placehold.co/600x400.png', hint: 'transaction history' },
-  { title: 'Member Verification', description: 'Secure your identity with mobile KYC.', icon: UserCheck, href: '/verify', cta: 'Verify Now', img: 'https://placehold.co/600x400.png', hint: 'identity security' },
-  { title: 'Credit Reputation', description: 'Check your AI-powered credit score.', icon: Gauge, href: '/credit-score', cta: 'Get Score', img: 'https://placehold.co/600x400.png', hint: 'financial score' },
-];
+import { mockWallets, mockContributions, mockLoans, mockTransactions } from '@/lib/mockData';
 
 export default function DashboardPage() {
   const { userRole, isRoleInitialized } = useRole();
@@ -29,6 +21,22 @@ export default function DashboardPage() {
       router.replace('/admin/dashboard');
     }
   }, [userRole, isRoleInitialized, router]);
+
+  // Calculate dynamic data for member features
+  const numGroupWallets = mockWallets.length;
+  const totalContributions = mockContributions.reduce((sum, contrib) => sum + contrib.amount, 0);
+  const numActiveLoans = mockLoans.filter(loan => loan.status === 'active').length;
+  const numTotalTransactions = mockTransactions.length;
+
+  const memberFeatures = [
+    { title: 'Group Wallets', description: `Access and manage ${numGroupWallets} collective savings group wallets.`, icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'community finance' },
+    { title: 'Contributions', description: `Contribute tokens to your group. Total contributed: ${totalContributions.toLocaleString()} UGX.`, icon: Wallet, href: '/contributions', cta: 'Make Contribution', img: 'https://placehold.co/600x400.png', hint: 'digital currency' },
+    { title: 'Smart Loans', description: `Access automated micro-loans. ${numActiveLoans} loans currently active.`, icon: Repeat, href: '/loans', cta: 'Apply for Loan', img: 'https://placehold.co/600x400.png', hint: 'loan agreement' },
+    { title: 'Transparent Records', description: `View all ${numTotalTransactions} immutable transactions on the ledger.`, icon: History, href: '/records', cta: 'See Ledger', img: 'https://placehold.co/600x400.png', hint: 'transaction history' },
+    { title: 'Member Verification', description: 'Secure your identity with mobile KYC. Complete your verification to enhance trust.', icon: UserCheck, href: '/verify', cta: 'Verify Now', img: 'https://placehold.co/600x400.png', hint: 'identity security' },
+    { title: 'Credit Reputation', description: 'Check your AI-powered credit score based on your SACCO activity.', icon: Gauge, href: '/credit-score', cta: 'Get Score', img: 'https://placehold.co/600x400.png', hint: 'financial score' },
+  ];
+
 
   if (!isRoleInitialized || userRole === 'admin') {
     // Show loading or null while redirecting or if role is not initialized
@@ -81,15 +89,15 @@ export default function DashboardPage() {
                      <feature.icon className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
                    </div>
                   <CardTitle className="font-headline text-xl sm:text-2xl text-foreground">{feature.title}</CardTitle>
-                  <CardDescription className="text-sm sm:text-base h-12">{feature.description}</CardDescription>
+                  <CardDescription className="text-sm sm:text-base min-h-[3rem]">{feature.description}</CardDescription> {/* Removed fixed h-12, added min-h */}
                 </CardHeader>
                 <CardContent className="flex-grow flex flex-col items-center text-center p-4 sm:p-6">
                    <div className="w-full aspect-video mb-4 rounded-md overflow-hidden">
                     <Image 
                         src={feature.img} 
                         alt={feature.title} 
-                        width={300} 
-                        height={200} 
+                        width={600} 
+                        height={400} 
                         className="w-full h-full object-cover" 
                         data-ai-hint={feature.hint}
                       />

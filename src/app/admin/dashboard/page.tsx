@@ -4,23 +4,14 @@
 import AppLayout from '../../AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, Users, Landmark, History, Settings, Edit3, ListChecks, BarChart3 } from 'lucide-react';
+import { ShieldCheck, Users, Landmark, History, Settings, ListChecks, BarChart3, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRole } from '@/contexts/RoleContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-
-
-const adminFeatures = [
-  { title: 'Manage Members', description: 'Approve, view, and manage SACCO members.', icon: Users, href: '/admin/manage-members', cta: 'Go to Members', img: 'https://placehold.co/600x400.png', hint: 'user management list', disabled: false },
-  { title: 'Wallets Overview', description: 'Monitor all group wallets and their balances.', icon: Landmark, href: '/admin/wallets-overview', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'financial dashboard charts', disabled: false },
-  { title: 'System Logs', description: 'Track all system-level activities and important events.', icon: History, href: '/admin/system-logs', cta: 'View Logs', img: 'https://placehold.co/600x400.png', hint: 'server logs text', disabled: false },
-  { title: 'Approve Loans', description: 'Review and approve/reject loan applications.', icon: ListChecks, href: '/admin/approve-loans', cta: 'Review Loans', img: 'https://placehold.co/600x400.png', hint: 'approval checklist', disabled: true },
-  { title: 'Platform Analytics', description: 'View key metrics and reports on platform usage.', icon: BarChart3, href: '/admin/analytics', cta: 'View Analytics', img: 'https://placehold.co/600x400.png', hint: 'data charts graphs', disabled: true },
-  { title: 'System Settings', description: 'Configure global platform settings and parameters.', icon: Settings, href: '/admin/settings', cta: 'Configure', img: 'https://placehold.co/600x400.png', hint: 'gears settings interface', disabled: true },
-];
+import { mockMembers, mockWallets, mockLoans, mockTransactions } from '@/lib/mockData';
 
 
 export default function AdminDashboardPage() {
@@ -32,6 +23,23 @@ export default function AdminDashboardPage() {
       router.replace('/'); // Redirect non-admins to member dashboard
     }
   }, [userRole, isRoleInitialized, router]);
+
+  // Calculate dynamic data for admin features
+  const numMembers = mockMembers.length;
+  const numWallets = mockWallets.length;
+  const totalPlatformBalance = mockWallets.reduce((sum, wallet) => sum + wallet.balance, 0);
+  const numPendingLoans = mockLoans.filter(loan => loan.status === 'pending').length;
+  const numTotalTransactions = mockTransactions.length; // Assuming mockTransactions is available globally or imported
+
+  const adminFeatures = [
+    { title: 'Manage Members', description: `View, approve, and manage all ${numMembers} SACCO members.`, icon: Users, href: '/admin/manage-members', cta: 'Go to Members', img: 'https://placehold.co/600x400.png', hint: 'user management list', disabled: false },
+    { title: 'Wallets Overview', description: `Monitor ${numWallets} group wallets. Total balance: ${totalPlatformBalance.toLocaleString()} UGX.`, icon: Landmark, href: '/admin/wallets-overview', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'financial dashboard charts', disabled: false },
+    { title: 'System Logs', description: `Track all ${numTotalTransactions} system-level activities and important events.`, icon: History, href: '/admin/system-logs', cta: 'View Logs', img: 'https://placehold.co/600x400.png', hint: 'server logs text', disabled: false },
+    { title: 'Approve Loans', description: `Review and approve/reject ${numPendingLoans > 0 ? numPendingLoans : 'loan'} applications.`, icon: ListChecks, href: '/admin/approve-loans', cta: 'Review Loans', img: 'https://placehold.co/600x400.png', hint: 'approval checklist tasks', disabled: true },
+    { title: 'Platform Analytics', description: 'View key metrics and reports on platform usage and growth.', icon: BarChart3, href: '/admin/analytics', cta: 'View Analytics', img: 'https://placehold.co/600x400.png', hint: 'data charts graphs', disabled: true },
+    { title: 'System Settings', description: 'Configure global platform settings, parameters, and integrations.', icon: Settings, href: '/admin/settings', cta: 'Configure', img: 'https://placehold.co/600x400.png', hint: 'gears settings interface', disabled: true },
+  ];
+
 
   if (!isRoleInitialized || userRole !== 'admin') {
     return (
@@ -81,15 +89,15 @@ export default function AdminDashboardPage() {
                      <feature.icon className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
                    </div>
                   <CardTitle className="font-headline text-xl sm:text-2xl text-foreground">{feature.title}</CardTitle>
-                  <CardDescription className="text-sm sm:text-base h-12">{feature.description}</CardDescription>
+                  <CardDescription className="text-sm sm:text-base min-h-[3rem]">{feature.description}</CardDescription> {/* Removed fixed h-12, added min-h */}
                 </CardHeader>
                 <CardContent className="flex-grow flex flex-col items-center text-center p-4 sm:p-6">
                    <div className="w-full aspect-video mb-4 rounded-md overflow-hidden">
                     <Image 
                         src={feature.img} 
                         alt={feature.title} 
-                        width={300} 
-                        height={200} 
+                        width={600} 
+                        height={400} 
                         className="w-full h-full object-cover"
                         data-ai-hint={feature.hint}
                       />
