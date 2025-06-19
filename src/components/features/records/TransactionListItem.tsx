@@ -1,0 +1,58 @@
+"use client";
+
+import type { Transaction } from '@/types';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Landmark, Download, Upload, FileText, TrendingUp, TrendingDown, CircleDollarSign } from 'lucide-react';
+
+interface TransactionListItemProps {
+  transaction: Transaction;
+}
+
+const getTransactionIcon = (type: Transaction['type'], amount: number) => {
+  if (type === 'contribution') return <Upload className="h-5 w-5 text-green-500" />;
+  if (type === 'loan_disbursement') return <TrendingDown className="h-5 w-5 text-red-500" />;
+  if (type === 'loan_repayment') return <TrendingUp className="h-5 w-5 text-blue-500" />;
+  if (type === 'interest_accrual') return <CircleDollarSign className="h-5 w-5 text-purple-500" />;
+  if (type === 'wallet_creation') return <Landmark className="h-5 w-5 text-indigo-500" />;
+  return <FileText className="h-5 w-5 text-gray-500" />;
+};
+
+const getTransactionColorClass = (amount: number) => {
+    return amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+};
+
+export function TransactionListItem({ transaction }: TransactionListItemProps) {
+  const date = new Date(transaction.date);
+  const formattedDate = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const formattedTime = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="flex items-center justify-between p-3 sm:p-4 border-b hover:bg-muted/50 transition-colors">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className="p-2 bg-muted rounded-full">
+            {getTransactionIcon(transaction.type, transaction.amount)}
+        </div>
+        <div>
+          <p className={cn("font-semibold text-sm sm:text-base", getTransactionColorClass(transaction.amount))}>
+            {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toLocaleString()}
+          </p>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate max-w-[150px] sm:max-w-xs" title={transaction.description}>{transaction.description}</p>
+          {transaction.memberId && <p className="text-xs text-muted-foreground/70">Member: {transaction.memberId}</p>}
+        </div>
+      </div>
+      <div className="text-right space-y-1">
+        <Badge variant={"outline"} className={cn(
+            "text-xs",
+            transaction.type === 'contribution' ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-800/30 dark:text-green-300 dark:border-green-700' :
+            transaction.type === 'loan_disbursement' ? 'bg-red-100 text-red-700 border-red-300 dark:bg-red-800/30 dark:text-red-300 dark:border-red-700' :
+            transaction.type === 'loan_repayment' ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-800/30 dark:text-blue-300 dark:border-blue-700' :
+            'bg-muted text-muted-foreground border-border'
+          )}>
+            {transaction.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+        </Badge>
+        <p className="text-xs text-muted-foreground">{formattedDate} <span className="hidden sm:inline">at {formattedTime}</span></p>
+      </div>
+    </div>
+  );
+}
