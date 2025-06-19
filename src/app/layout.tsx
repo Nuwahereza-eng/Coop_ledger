@@ -1,7 +1,9 @@
+
 import type { Metadata } from 'next';
 // import { PT_Sans } from 'next/font/google'; // Using <link> as per instructions
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { RoleProvider } from '@/contexts/RoleContext';
 
 // If you want to use the next/font loader for PT Sans:
 // const ptSans = PT_Sans({
@@ -29,7 +31,9 @@ export default function RootLayout({
       </head>
       {/* If using next/font, add ptSans.className here */}
       <body className="font-body antialiased">
-        {children}
+        <RoleProvider>
+          {children}
+        </RoleProvider>
         <Toaster />
       </body>
     </html>

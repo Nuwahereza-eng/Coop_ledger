@@ -10,9 +10,7 @@ import {
   Landmark
 } from 'lucide-react';
 
-// This file is effectively replaced by memberNav.ts and adminNav.ts
-// Keeping it to avoid breaking direct imports if any, but it should be deprecated.
-export const navItems: NavItem[] = [
+export const memberNavItems: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/wallets', label: 'Group Wallets', icon: Landmark },
   { href: '/contributions', label: 'Contributions', icon: Wallet },

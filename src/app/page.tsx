@@ -1,11 +1,17 @@
+
+"use client";
+
 import Link from 'next/link';
 import AppLayout from './AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Landmark, Repeat, History, UserCheck, Gauge, Wallet, ArrowRight } from 'lucide-react';
+import { Landmark, Repeat, History, UserCheck, Gauge, Wallet, ArrowRight, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { useRole } from '@/contexts/RoleContext';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
-const features = [
+const memberFeatures = [
   { title: 'Group Wallets', description: 'Manage collective savings securely.', icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'community finance' },
   { title: 'Contributions', description: 'Contribute tokens to your group.', icon: Wallet, href: '/contributions', cta: 'Make Contribution', img: 'https://placehold.co/600x400.png', hint: 'digital currency' },
   { title: 'Smart Loans', description: 'Access automated micro-loans.', icon: Repeat, href: '/loans', cta: 'Apply for Loan', img: 'https://placehold.co/600x400.png', hint: 'loan agreement' },
@@ -15,6 +21,28 @@ const features = [
 ];
 
 export default function DashboardPage() {
+  const { userRole, isRoleInitialized } = useRole();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isRoleInitialized && userRole === 'admin') {
+      router.replace('/admin/dashboard');
+    }
+  }, [userRole, isRoleInitialized, router]);
+
+  if (!isRoleInitialized || userRole === 'admin') {
+    // Show loading or null while redirecting or if role is not initialized
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+           {isRoleInitialized && userRole === 'admin' && <p className="mt-4 text-muted-foreground">Redirecting to Admin Dashboard...</p>}
+        </div>
+      </AppLayout>
+    );
+  }
+  
+  // Render Member Dashboard
   return (
     <AppLayout>
       <div className="space-y-8">
@@ -46,7 +74,7 @@ export default function DashboardPage() {
         <section>
           <h2 className="text-2xl sm:text-3xl font-semibold font-headline mb-6 text-center text-foreground">Key Features</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature) => (
+            {memberFeatures.map((feature) => (
               <Card key={feature.title} className="flex flex-col hover:shadow-xl transition-shadow duration-300 bg-card">
                 <CardHeader className="items-center text-center pt-6">
                    <div className="p-3 bg-primary/10 rounded-full mb-3">
