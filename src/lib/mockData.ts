@@ -1,4 +1,7 @@
+
 import type { GroupWallet, Loan, Transaction, Member, Contribution } from '@/types';
+
+// Note: As Firestore integration progresses, these mock arrays will be gradually phased out or used only as fallbacks/testing.
 
 export const mockMembers: Member[] = [
   { id: 'member-1', name: 'Aisha Ibrahim', verificationStatus: 'verified', creditScore: 75 },
@@ -24,7 +27,7 @@ export const mockContributions: Contribution[] = [
     { id: 'contr-4', memberId: 'member-1', walletId: 'wallet-1', amount: 150000, tokenType: 'UGX', date: '2023-02-15T10:00:00Z' },
 ];
 
-
+// mockWallets is no longer the primary source for /wallets page, but might be used by other parts not yet migrated.
 export const mockWallets: GroupWallet[] = [
   {
     id: 'wallet-1',
@@ -58,7 +61,7 @@ export const mockLoans: Loan[] = [
     status: 'active',
     requestDate: '2023-01-20T10:00:00Z',
     approvalDate: '2023-02-01T14:00:00Z',
-    totalRepaid: 8550, // Updated to reflect first payment
+    totalRepaid: 8550, 
     repaymentSchedule: [
       { id: 'rep-1-1', dueDate: '2023-03-01T00:00:00Z', amountDue: 8550, amountPaid: 8550, paymentDate: '2023-03-01T09:00:00Z', status: 'paid' },
       { id: 'rep-1-2', dueDate: '2023-04-01T00:00:00Z', amountDue: 8550, status: 'pending' },
@@ -79,13 +82,18 @@ export const mockLoans: Loan[] = [
     status: 'pending',
     requestDate: '2023-04-01T10:00:00Z',
     totalRepaid: 0,
-    repaymentSchedule: [], // Generated upon approval
+    repaymentSchedule: [], 
   },
 ];
 
+// getWalletById from mock data is now superseded by the Firestore service for the wallet detail page.
+// It can be removed or kept if other parts of the app still rely on it during transition.
+// For now, let's comment it out to encourage use of the service.
+/*
 export function getWalletById(id: string): GroupWallet | undefined {
   return mockWallets.find(wallet => wallet.id === id);
 }
+*/
 
 export function getLoanById(id: string): Loan | undefined {
   return mockLoans.find(loan => loan.id === id);

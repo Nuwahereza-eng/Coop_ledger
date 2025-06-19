@@ -9,12 +9,17 @@ import { Landmark, Repeat, History, UserCheck, Gauge, Wallet, ArrowRight, Loader
 import Image from 'next/image';
 import { useRole } from '@/contexts/RoleContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { mockWallets, mockContributions, mockLoans, mockTransactions } from '@/lib/mockData';
+import { useEffect, useState } from 'react';
+import { mockContributions, mockLoans, mockTransactions } from '@/lib/mockData';
+import { getWallets } from '@/services/walletService'; // Import Firestore service
+import type { GroupWallet } from '@/types';
 
 export default function DashboardPage() {
   const { userRole, isRoleInitialized } = useRole();
   const router = useRouter();
+
+  const [numGroupWallets, setNumGroupWallets] = useState(0);
+  const [isWalletDataLoading, setIsWalletDataLoading] = useState(true);
 
   useEffect(() => {
     if (isRoleInitialized && userRole === 'admin') {
@@ -22,14 +27,33 @@ export default function DashboardPage() {
     }
   }, [userRole, isRoleInitialized, router]);
 
+  useEffect(() => {
+    if (userRole === 'member') {
+      async function fetchDashboardData() {
+        setIsWalletDataLoading(true);
+        try {
+          const wallets = await getWallets();
+          setNumGroupWallets(wallets.length);
+        } catch (error) {
+          console.error("Error fetching wallet data for dashboard:", error);
+          // Potentially set an error state to display to the user
+        } finally {
+          setIsWalletDataLoading(false);
+        }
+      }
+      fetchDashboardData();
+    }
+  }, [userRole, isRoleInitialized]);
+
+
   // Calculate dynamic data for member features
-  const numGroupWallets = mockWallets.length;
+  // For now, only numGroupWallets is from Firestore. Others remain mock.
   const totalContributions = mockContributions.reduce((sum, contrib) => sum + contrib.amount, 0);
   const numActiveLoans = mockLoans.filter(loan => loan.status === 'active').length;
   const numTotalTransactions = mockTransactions.length;
 
   const memberFeatures = [
-    { title: 'Group Wallets', description: `Access and manage ${numGroupWallets} collective savings group wallets.`, icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'community finance' },
+    { title: 'Group Wallets', description: `Access and manage ${isWalletDataLoading ? '...' : numGroupWallets} collective savings group wallets.`, icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'community finance' },
     { title: 'Contributions', description: `Contribute tokens to your group. Total contributed: ${totalContributions.toLocaleString()} UGX.`, icon: Wallet, href: '/contributions', cta: 'Make Contribution', img: 'https://placehold.co/600x400.png', hint: 'digital currency' },
     { title: 'Smart Loans', description: `Access automated micro-loans. ${numActiveLoans} loans currently active.`, icon: Repeat, href: '/loans', cta: 'Apply for Loan', img: 'https://placehold.co/600x400.png', hint: 'loan agreement' },
     { title: 'Transparent Records', description: `View all ${numTotalTransactions} immutable transactions on the ledger.`, icon: History, href: '/records', cta: 'See Ledger', img: 'https://placehold.co/600x400.png', hint: 'transaction history' },
@@ -38,13 +62,14 @@ export default function DashboardPage() {
   ];
 
 
-  if (!isRoleInitialized || userRole === 'admin') {
-    // Show loading or null while redirecting or if role is not initialized
+  if (!isRoleInitialized || userRole === 'admin' || (userRole === 'member' && isWalletDataLoading && !numGroupWallets)) {
+    // Show loading or null while redirecting or if role is not initialized or initial data is loading
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
            {isRoleInitialized && userRole === 'admin' && <p className="mt-4 text-muted-foreground">Redirecting to Admin Dashboard...</p>}
+           {userRole === 'member' && isWalletDataLoading && <p className="mt-4 text-muted-foreground">Loading dashboard data...</p>}
         </div>
       </AppLayout>
     );
@@ -89,7 +114,7 @@ export default function DashboardPage() {
                      <feature.icon className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
                    </div>
                   <CardTitle className="font-headline text-xl sm:text-2xl text-foreground">{feature.title}</CardTitle>
-                  <CardDescription className="text-sm sm:text-base min-h-[3rem]">{feature.description}</CardDescription> {/* Removed fixed h-12, added min-h */}
+                  <CardDescription className="text-sm sm:text-base min-h-[3rem]">{feature.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow flex flex-col items-center text-center p-4 sm:p-6">
                    <div className="w-full aspect-video mb-4 rounded-md overflow-hidden">

@@ -1,32 +1,77 @@
+
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '../../AppLayout';
-import { getWalletById, mockMembers } from '@/lib/mockData'; 
-import type { GroupWallet, Member as MemberType } from '@/types';
+// import { getWalletById as getMockWalletById, mockMembers } from '@/lib/mockData'; // Replaced
+import type { GroupWallet, Member as MemberType, Transaction } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContributeForm } from '@/components/features/wallets/ContributeForm';
 import { TransactionListItem } from '@/components/features/records/TransactionListItem';
-import { ArrowLeft, Users, DollarSign, Landmark, ListCollapse, PlusCircle } from 'lucide-react';
+import { ArrowLeft, Users, DollarSign, Landmark, ListCollapse, PlusCircle, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { getWalletById } from '@/services/walletService'; // Using Firestore service
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { mockMembers } from '@/lib/mockData'; // Still using for placeholder members if wallet.members is empty
 
 export default function WalletDetailPage() {
   const params = useParams();
   const router = useRouter();
   const walletId = params.walletId as string;
-  const wallet: GroupWallet | undefined = getWalletById(walletId); 
+  
+  const [wallet, setWallet] = useState<GroupWallet | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!wallet) {
+  useEffect(() => {
+    if (!walletId) return;
+
+    async function fetchWalletDetails() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const firestoreWallet = await getWalletById(walletId);
+        if (firestoreWallet) {
+          setWallet(firestoreWallet);
+        } else {
+          setError(`Wallet with ID "${walletId}" not found.`);
+        }
+      } catch (err) {
+        console.error(`Failed to fetch wallet ${walletId}:`, err);
+        setError(err instanceof Error ? err.message : "An unknown error occurred.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchWalletDetails();
+  }, [walletId]);
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center items-center h-[calc(100vh-10rem)]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="ml-4 text-muted-foreground">Loading wallet details...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error) {
     return (
       <AppLayout>
         <div className="text-center py-12">
-          <Landmark className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h1 className="text-2xl font-semibold text-foreground">Wallet Not Found</h1>
-          <p className="text-muted-foreground mt-2">The wallet you are looking for does not exist or you may not have access.</p>
+          <AlertTriangle className="h-16 w-16 text-destructive mx-auto mb-4" />
+          <h1 className="text-2xl font-semibold text-foreground">Error Loading Wallet</h1>
+          <Alert variant="destructive" className="max-w-md mx-auto mt-4">
+            <AlertTitle>Loading Failed</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
           <Button onClick={() => router.push('/wallets')} className="mt-6">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Wallets
           </Button>
@@ -35,7 +80,30 @@ export default function WalletDetailPage() {
     );
   }
 
-  const displayMembers = wallet.members.length > 0 ? wallet.members : mockMembers.slice(0,3);
+  if (!wallet) {
+    return (
+      <AppLayout>
+        <div className="text-center py-12">
+          <Landmark className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h1 className="text-2xl font-semibold text-foreground">Wallet Not Found</h1>
+          <p className="text-muted-foreground mt-2">The wallet you are looking for does not exist or could not be loaded.</p>
+          <Button onClick={() => router.push('/wallets')} className="mt-6">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Wallets
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Use wallet.members if available from Firestore, otherwise fallback to mockMembers for display
+  // This part needs refinement based on how members are actually associated and fetched for a wallet from Firestore
+  const displayMembers = wallet.members && wallet.members.length > 0 ? wallet.members : mockMembers.slice(0,3);
+  const displayTransactions = wallet.transactions || [];
+
+  const creatorName = wallet.creatorId 
+    ? (wallet.members?.find(m => m.id === wallet.creatorId)?.name || wallet.creatorId) 
+    : 'Unknown';
+
 
   return (
     <AppLayout>
@@ -54,7 +122,7 @@ export default function WalletDetailPage() {
                         <Landmark className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
                         <CardTitle className="font-headline text-2xl sm:text-3xl text-foreground">{wallet.name}</CardTitle>
                     </div>
-                    <CardDescription className="text-xs sm:text-sm">Managed in {wallet.tokenType} &bull; Created by: {wallet.members.find(m => m.id === wallet.creatorId)?.name || wallet.creatorId}</CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">Managed in {wallet.tokenType} &bull; Created by: {creatorName}</CardDescription>
                 </div>
                 <div className="text-left md:text-right mt-2 md:mt-0">
                     <p className="text-xs sm:text-sm text-muted-foreground">Current Balance</p>
@@ -85,10 +153,10 @@ export default function WalletDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0 sm:p-2 md:p-4">
-                {wallet.transactions.length > 0 ? (
+                {displayTransactions.length > 0 ? (
                   <ScrollArea className="h-[300px] sm:h-[350px]">
                     <div className="divide-y divide-border">
-                    {wallet.transactions.slice(0, 10).map(tx => ( 
+                    {displayTransactions.slice(0, 10).map(tx => ( 
                       <TransactionListItem key={tx.id} transaction={tx} />
                     ))}
                     </div>
