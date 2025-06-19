@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -34,7 +35,7 @@ export function CreateWalletForm() {
     resolver: zodResolver(createWalletSchema),
     defaultValues: {
       groupName: '',
-      tokenType: '',
+      tokenType: 'UGX',
     },
   });
 
@@ -106,12 +107,11 @@ export function CreateWalletForm() {
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a stablecoin or token" />
+                        <SelectValue placeholder="Select a currency or token" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="USDC">USDC (USD Coin)</SelectItem>
-                      <SelectItem value="DAI">DAI (Dai Stablecoin)</SelectItem>
+                      <SelectItem value="UGX">UGX (Ugandan Shilling)</SelectItem>
                       <SelectItem value="AppToken">AppToken (Native Token)</SelectItem>
                     </SelectContent>
                   </Select>

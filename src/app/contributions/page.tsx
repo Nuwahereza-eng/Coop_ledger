@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -62,7 +63,7 @@ export default function ContributionsPage() {
     console.log(`Contributing to wallet ${data.walletId}:`, data);
     toast({
       title: 'Contribution Submitted',
-      description: `Your contribution of ${data.amount} ${data.tokenType} to "${targetWallet?.name}" has been submitted.`,
+      description: `Your contribution of ${data.amount.toLocaleString()} ${data.tokenType} to "${targetWallet?.name}" has been submitted.`,
     });
     setIsLoading(false);
     form.reset({ walletId: '', amount: 0, tokenType: '' });
@@ -125,7 +126,7 @@ export default function ContributionsPage() {
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount</FormLabel>
+                      <FormLabel>Amount ({form.getValues('tokenType') || 'UGX'})</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -145,7 +146,7 @@ export default function ContributionsPage() {
                   control={form.control}
                   name="tokenType"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="hidden"> {/* Hidden as it's derived */}
                       <FormLabel>Token Type</FormLabel>
                        <Input {...field} readOnly disabled className="bg-muted/50" />
                       <FormMessage />
