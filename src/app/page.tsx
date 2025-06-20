@@ -30,15 +30,18 @@ export default function DashboardPage() {
   useEffect(() => {
     if (userRole === 'member') {
       async function fetchDashboardData() {
+        console.log('[DashboardPage] Member role detected, fetching wallet data for dashboard.');
         setIsWalletDataLoading(true);
         try {
           const wallets = await getWallets();
+          console.log('[DashboardPage] Fetched wallets for dashboard count:', wallets);
           setNumGroupWallets(wallets.length);
         } catch (error) {
-          console.error("Error fetching wallet data for dashboard:", error);
+          console.error("[DashboardPage] Error fetching wallet data for dashboard:", error);
           // Potentially set an error state to display to the user
         } finally {
           setIsWalletDataLoading(false);
+          console.log('[DashboardPage] Finished fetching wallet data for dashboard.');
         }
       }
       fetchDashboardData();
@@ -62,7 +65,7 @@ export default function DashboardPage() {
   ];
 
 
-  if (!isRoleInitialized || userRole === 'admin' || (userRole === 'member' && isWalletDataLoading && !numGroupWallets)) {
+  if (!isRoleInitialized || userRole === 'admin' || (userRole === 'member' && isWalletDataLoading && !numGroupWallets && wallets.length === 0 )) { // Ensure initial state is also considered
     // Show loading or null while redirecting or if role is not initialized or initial data is loading
     return (
       <AppLayout>

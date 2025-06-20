@@ -29,44 +29,56 @@ function convertTimestampsToISO(data: any): any {
 
 
 export async function getWallets(): Promise<GroupWallet[]> {
+  console.log('[WalletService] Attempting to fetch all wallets...');
   try {
     const walletsCollection = collection(db, 'wallets');
     const walletSnapshot = await getDocs(walletsCollection);
+    console.log('[WalletService] Raw wallet snapshot:', walletSnapshot);
     const walletsList = walletSnapshot.docs.map(doc => {
       const data = doc.data();
+      console.log(`[WalletService] Raw data for wallet ${doc.id}:`, data);
       // Assume members and transactions are stored directly or fetched/resolved here
       // For now, direct conversion
+      const convertedData = convertTimestampsToISO(data);
+      console.log(`[WalletService] Converted data for wallet ${doc.id}:`, convertedData);
       return { 
         id: doc.id, 
-        ...convertTimestampsToISO(data) 
+        ...convertedData
       } as GroupWallet;
     });
+    console.log('[WalletService] Wallets after conversion:', walletsList);
     return walletsList;
   } catch (error) {
-    console.error("Error fetching wallets: ", error);
+    console.error("[WalletService] Error fetching wallets: ", error);
     throw new Error("Could not fetch wallets.");
   }
 }
 
 export async function getWalletById(id: string): Promise<GroupWallet | undefined> {
+  console.log(`[WalletService] Attempting to fetch wallet by ID: ${id}`);
   try {
     const walletDocRef = doc(db, 'wallets', id);
     const walletDoc = await getDoc(walletDocRef);
 
     if (walletDoc.exists()) {
       const data = walletDoc.data();
+      console.log(`[WalletService] Raw data for wallet ${id}:`, data);
        // Assuming members and transactions are sub-collections or fetched separately and merged
       // For simplicity, if they are stored directly on the wallet doc:
-      return { 
+      const convertedData = convertTimestampsToISO(data);
+      console.log(`[WalletService] Converted data for wallet ${id}:`, convertedData);
+      const wallet = { 
         id: walletDoc.id, 
-        ...convertTimestampsToISO(data)
+        ...convertedData
       } as GroupWallet;
+      console.log(`[WalletService] Wallet ${id} after conversion:`, wallet);
+      return wallet;
     } else {
-      console.warn(`Wallet with id ${id} not found.`);
+      console.warn(`[WalletService] Wallet with id ${id} not found.`);
       return undefined;
     }
   } catch (error) {
-    console.error(`Error fetching wallet with id ${id}: `, error);
+    console.error(`[WalletService] Error fetching wallet with id ${id}: `, error);
     throw new Error(`Could not fetch wallet ${id}.`);
   }
 }

@@ -30,22 +30,27 @@ export default function WalletDetailPage() {
 
   useEffect(() => {
     if (!walletId) return;
+    console.log(`[WalletDetailPage] useEffect triggered for walletId: ${walletId}`);
 
     async function fetchWalletDetails() {
       try {
         setIsLoading(true);
         setError(null);
+        console.log(`[WalletDetailPage] Fetching details for wallet: ${walletId}`);
         const firestoreWallet = await getWalletById(walletId);
+        console.log(`[WalletDetailPage] Fetched wallet details for ${walletId}:`, firestoreWallet);
         if (firestoreWallet) {
           setWallet(firestoreWallet);
         } else {
           setError(`Wallet with ID "${walletId}" not found.`);
+          console.warn(`[WalletDetailPage] Wallet ${walletId} not found after fetch.`);
         }
       } catch (err) {
-        console.error(`Failed to fetch wallet ${walletId}:`, err);
-        setError(err instanceof Error ? err.message : "An unknown error occurred.");
+        console.error(`[WalletDetailPage] Failed to fetch wallet ${walletId}:`, err);
+        setError(err instanceof Error ? err.message : "An unknown error occurred while fetching wallet details.");
       } finally {
         setIsLoading(false);
+        console.log(`[WalletDetailPage] Finished fetching for ${walletId}. Loading state:`, false);
       }
     }
     fetchWalletDetails();

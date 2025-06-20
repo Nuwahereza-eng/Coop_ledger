@@ -33,17 +33,20 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (userRole === 'admin') {
       async function fetchAdminDashboardData() {
+        console.log('[AdminDashboardPage] Admin role detected, fetching wallet data.');
         setIsWalletDataLoading(true);
         try {
           const wallets = await getWallets();
+          console.log('[AdminDashboardPage] Fetched wallets for admin dashboard:', wallets);
           setNumWallets(wallets.length);
           const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
           setTotalPlatformBalance(totalBalance);
         } catch (error) {
-          console.error("Error fetching wallet data for admin dashboard:", error);
+          console.error("[AdminDashboardPage] Error fetching wallet data for admin dashboard:", error);
           // Potentially set an error state
         } finally {
           setIsWalletDataLoading(false);
+          console.log('[AdminDashboardPage] Finished fetching wallet data for admin dashboard.');
         }
       }
       fetchAdminDashboardData();
@@ -56,7 +59,7 @@ export default function AdminDashboardPage() {
   const numPendingLoans = mockLoans.filter(loan => loan.status === 'pending').length;
   const numTotalTransactions = mockTransactions.length; 
 
-  const isLoadingInitialData = !isRoleInitialized || (userRole === 'admin' && isWalletDataLoading && numWallets === 0 && totalPlatformBalance === 0);
+  const isLoadingInitialData = !isRoleInitialized || (userRole === 'admin' && isWalletDataLoading && numWallets === 0 && totalPlatformBalance === 0 && wallets.length === 0); // Ensure initial state is considered
 
 
   const adminFeatures = [

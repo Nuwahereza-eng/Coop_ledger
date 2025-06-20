@@ -19,16 +19,19 @@ export default function WalletsPage() {
 
   useEffect(() => {
     async function fetchWallets() {
+      console.log('[WalletsPage] useEffect triggered to fetch wallets.');
       try {
         setIsLoading(true);
         setError(null);
         const firestoreWallets = await getWallets();
+        console.log('[WalletsPage] Fetched wallets:', firestoreWallets);
         setWallets(firestoreWallets);
       } catch (err) {
-        console.error("Failed to fetch wallets:", err);
-        setError(err instanceof Error ? err.message : "An unknown error occurred.");
+        console.error("[WalletsPage] Failed to fetch wallets:", err);
+        setError(err instanceof Error ? err.message : "An unknown error occurred while fetching wallets.");
       } finally {
         setIsLoading(false);
+        console.log('[WalletsPage] Finished fetching wallets. Loading state:', false);
       }
     }
     fetchWallets();
