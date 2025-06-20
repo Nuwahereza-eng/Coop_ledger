@@ -20,6 +20,7 @@ export default function AdminDashboardPage() {
   const { userRole, isRoleInitialized } = useRole();
   const router = useRouter();
 
+  const [wallets, setWallets] = useState<GroupWallet[]>([]);
   const [numWallets, setNumWallets] = useState(0);
   const [totalPlatformBalance, setTotalPlatformBalance] = useState(0);
   const [isWalletDataLoading, setIsWalletDataLoading] = useState(true);
@@ -36,10 +37,11 @@ export default function AdminDashboardPage() {
         console.log('[AdminDashboardPage] Admin role detected, fetching wallet data.');
         setIsWalletDataLoading(true);
         try {
-          const wallets = await getWallets();
-          console.log('[AdminDashboardPage] Fetched wallets for admin dashboard:', wallets);
-          setNumWallets(wallets.length);
-          const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
+          const fetchedWallets = await getWallets();
+          console.log('[AdminDashboardPage] Fetched wallets for admin dashboard:', fetchedWallets);
+          setWallets(fetchedWallets);
+          setNumWallets(fetchedWallets.length);
+          const totalBalance = fetchedWallets.reduce((sum, wallet) => sum + wallet.balance, 0);
           setTotalPlatformBalance(totalBalance);
         } catch (error) {
           console.error("[AdminDashboardPage] Error fetching wallet data for admin dashboard:", error);
