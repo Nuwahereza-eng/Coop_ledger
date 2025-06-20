@@ -1,10 +1,9 @@
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, Timestamp, addDoc, arrayUnion } from 'firebase/firestore';
 import type { GroupWallet, Member, Transaction, Repayment } from '@/types';
 
 // Helper function to convert Firestore Timestamps to ISO strings
-// This needs to be applied recursively if you have nested objects with Timestamps
 function convertTimestampsToISO(data: any): any {
   if (data === null || typeof data !== 'object') {
     return data;
@@ -33,12 +32,10 @@ export async function getWallets(): Promise<GroupWallet[]> {
   try {
     const walletsCollection = collection(db, 'wallets');
     const walletSnapshot = await getDocs(walletsCollection);
-    console.log('[WalletService] Raw wallet snapshot:', walletSnapshot);
+    console.log('[WalletService] Raw wallet snapshot:', walletSnapshot.docs.length, 'documents found.');
     const walletsList = walletSnapshot.docs.map(doc => {
       const data = doc.data();
       console.log(`[WalletService] Raw data for wallet ${doc.id}:`, data);
-      // Assume members and transactions are stored directly or fetched/resolved here
-      // For now, direct conversion
       const convertedData = convertTimestampsToISO(data);
       console.log(`[WalletService] Converted data for wallet ${doc.id}:`, convertedData);
       return { 
@@ -63,8 +60,6 @@ export async function getWalletById(id: string): Promise<GroupWallet | undefined
     if (walletDoc.exists()) {
       const data = walletDoc.data();
       console.log(`[WalletService] Raw data for wallet ${id}:`, data);
-       // Assuming members and transactions are sub-collections or fetched separately and merged
-      // For simplicity, if they are stored directly on the wallet doc:
       const convertedData = convertTimestampsToISO(data);
       console.log(`[WalletService] Converted data for wallet ${id}:`, convertedData);
       const wallet = { 
@@ -82,6 +77,41 @@ export async function getWalletById(id: string): Promise<GroupWallet | undefined
     throw new Error(`Could not fetch wallet ${id}.`);
   }
 }
+
+interface CreateWalletData {
+  name: string;
+  tokenType: string;
+  creatorId: string; 
+}
+
+export async function createWallet(walletData: CreateWalletData): Promise<string> {
+  console.log('[WalletService] Attempting to create wallet with data:', walletData);
+  try {
+    const walletsCollection = collection(db, 'wallets');
+    const newWalletDoc = {
+      name: walletData.name,
+      tokenType: walletData.tokenType,
+      creatorId: walletData.creatorId,
+      balance: 0,
+      members: [
+        { 
+          id: walletData.creatorId, 
+          name: `User ${walletData.creatorId.substring(0,5)}`, // Placeholder name
+          verificationStatus: 'pending' 
+        } as Member // Cast to Member, ensure all required fields are present or optional
+      ], 
+      transactions: [] as Transaction[],
+      createdAt: Timestamp.now() // Optional: add a creation timestamp
+    };
+    const docRef = await addDoc(walletsCollection, newWalletDoc);
+    console.log('[WalletService] Wallet created successfully with ID:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error("[WalletService] Error creating wallet: ", error);
+    throw new Error("Could not create wallet.");
+  }
+}
+
 
 // Example: If members were in a subcollection 'members' under each wallet
 // export async function getMembersForWallet(walletId: string): Promise<Member[]> {

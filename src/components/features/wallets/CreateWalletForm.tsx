@@ -13,6 +13,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Landmark, Loader2 } from 'lucide-react';
+import { createWallet as createWalletService } from '@/services/walletService'; // Import the service
+import { useRouter } from 'next/navigation';
+
 
 const createWalletSchema = z.object({
   groupName: z.string().min(3, { message: 'Group name must be at least 3 characters.' }).max(50, {message: "Group name too long."}),
@@ -23,6 +26,7 @@ type CreateWalletFormData = z.infer<typeof createWalletSchema>;
 
 export function CreateWalletForm() {
   const { toast } = useToast();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
@@ -41,16 +45,32 @@ export function CreateWalletForm() {
 
   async function onSubmit(data: CreateWalletFormData) {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log('Creating wallet:', data);
-    toast({
-      title: 'Wallet Creation Initiated',
-      description: `Group wallet "${data.groupName}" is being created with ${data.tokenType}.`,
-    });
-    setIsLoading(false);
-    form.reset();
-    // Potentially redirect or update UI state here
+    try {
+      // For now, using a hardcoded creatorId. In a real app, this would come from auth.
+      const creatorId = "app-user-01"; 
+      const newWalletId = await createWalletService({ 
+        name: data.groupName, 
+        tokenType: data.tokenType,
+        creatorId: creatorId
+      });
+      toast({
+        title: 'Wallet Created Successfully!',
+        description: `Group wallet "${data.groupName}" (ID: ${newWalletId.substring(0,6)}...) has been created.`,
+      });
+      form.reset();
+      // Optionally, redirect to the new wallet's page or the wallets list
+      router.push('/wallets'); 
+      // Or router.push(`/wallets/${newWalletId}`);
+    } catch (error) {
+      console.error('Error creating wallet:', error);
+      toast({
+        title: 'Wallet Creation Failed',
+        description: error instanceof Error ? error.message : 'Could not create the wallet. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   if (!isClient) {
