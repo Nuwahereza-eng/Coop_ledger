@@ -22,7 +22,6 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const userRole = currentUser?.role || 'member';
 
   // Provide the derived role and the initialization status to children.
-  // The 'isRoleInitialized' here comes directly from the useUser() hook.
   return (
     <RoleContext.Provider value={{ userRole, isRoleInitialized }}>
       {children}
