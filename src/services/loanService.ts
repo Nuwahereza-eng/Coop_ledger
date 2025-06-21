@@ -1,7 +1,7 @@
 
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, Timestamp, addDoc, updateDoc, runTransaction, arrayUnion } from 'firebase/firestore';
-import type { Loan, GroupWallet, Transaction } from '@/types';
+import type { Loan, GroupWallet, Transaction, Repayment } from '@/types';
 import { sha256, serializeTransactionForHashing, GENESIS_HASH } from '@/lib/crypto';
 
 
@@ -141,6 +141,25 @@ export async function approveLoan(loanId: string): Promise<void> {
 
     const newBalance = walletData.balance - loanData.amount;
 
+    // Generate Repayment Schedule
+    const repaymentSchedule: Repayment[] = [];
+    // Assuming interestRate is a flat rate for the entire term for simplicity
+    const totalRepayable = loanData.amount * (1 + loanData.interestRate);
+    const installmentAmount = totalRepayable / loanData.termMonths;
+    const approvalDate = new Date();
+
+    for (let i = 1; i <= loanData.termMonths; i++) {
+        const dueDate = new Date(approvalDate);
+        dueDate.setMonth(dueDate.getMonth() + i);
+        repaymentSchedule.push({
+            id: `rep-${loanId}-${i}`,
+            dueDate: Timestamp.fromDate(dueDate),
+            amountDue: parseFloat(installmentAmount.toFixed(2)),
+            status: 'pending',
+            amountPaid: 0,
+        });
+    }
+
     // Update wallet
     firestoreTransaction.update(walletRef, {
       balance: newBalance,
@@ -150,7 +169,8 @@ export async function approveLoan(loanId: string): Promise<void> {
     // Update loan
     firestoreTransaction.update(loanRef, {
       status: 'active',
-      approvalDate: Timestamp.now()
+      approvalDate: Timestamp.now(),
+      repaymentSchedule: repaymentSchedule
     });
   });
    console.log(`[LoanService] Loan ${loanId} approved and disbursed successfully.`);
@@ -162,4 +182,86 @@ export async function rejectLoan(loanId: string): Promise<void> {
         status: 'rejected',
     });
     console.log(`[LoanService] Loan ${loanId} rejected successfully.`);
+}
+
+
+export async function processLoanRepayment(loanId: string, repaymentAmount: number, memberId: string): Promise<void> {
+  await runTransaction(db, async (firestoreTransaction) => {
+    // 1. Get Loan and Wallet
+    const loanRef = doc(db, 'loans', loanId);
+    const loanDoc = await firestoreTransaction.get(loanRef);
+
+    if (!loanDoc.exists() || loanDoc.data().status !== 'active') {
+      throw new Error("Loan is not active or does not exist.");
+    }
+    const loanData = loanDoc.data() as Loan;
+
+    const walletRef = doc(db, 'wallets', loanData.walletId);
+    const walletDoc = await firestoreTransaction.get(walletRef);
+    if (!walletDoc.exists()) {
+      throw new Error("Source wallet for the loan not found!");
+    }
+    const walletData = walletDoc.data() as GroupWallet;
+
+    // 2. Create Wallet Transaction
+    const currentTransactions = (walletData.transactions || []).map(t => convertLoanTimestampsToISO(t)) as (Transaction & {date: string})[];
+    const sortedTransactions = currentTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const lastTransaction = sortedTransactions.length > 0 ? sortedTransactions[0] : null;
+    const previousHash = lastTransaction?.hash ?? GENESIS_HASH;
+
+    const repaymentTransaction: Omit<Transaction, 'hash'> = {
+        id: `txn-repay-${new Date().getTime()}-${Math.random().toString(16).slice(2)}`,
+        type: 'loan_repayment',
+        amount: repaymentAmount, // Positive: money into wallet
+        date: Timestamp.now(),
+        description: `Loan repayment by member ${memberId}`,
+        previousHash: previousHash,
+        walletId: loanData.walletId,
+        memberId: memberId,
+        relatedLoanId: loanId,
+    };
+
+    const hash = await sha256(serializeTransactionForHashing(repaymentTransaction));
+    const finalRepaymentTx: Transaction & {date: Timestamp} = { ...repaymentTransaction, hash };
+
+    // 3. Update Wallet
+    const newWalletBalance = walletData.balance + repaymentAmount;
+    firestoreTransaction.update(walletRef, {
+      balance: newWalletBalance,
+      transactions: arrayUnion(finalRepaymentTx)
+    });
+
+    // 4. Update Loan
+    const newTotalRepaid = loanData.totalRepaid + repaymentAmount;
+    let amountToApply = repaymentAmount;
+    const updatedSchedule = loanData.repaymentSchedule.map(r => {
+        const repayment = convertLoanTimestampsToISO(r);
+        if (repayment.status !== 'paid' && amountToApply > 0) {
+            const remainingDue = repayment.amountDue - (repayment.amountPaid || 0);
+            const paymentForThisInstallment = Math.min(amountToApply, remainingDue);
+            
+            repayment.amountPaid = (repayment.amountPaid || 0) + paymentForThisInstallment;
+            amountToApply -= paymentForThisInstallment;
+
+            if (repayment.amountPaid >= repayment.amountDue) {
+                repayment.status = 'paid';
+                repayment.paymentDate = Timestamp.now();
+            }
+        }
+        return repayment;
+    });
+    
+    let newStatus = loanData.status;
+    const totalAmountDue = loanData.amount * (1 + loanData.interestRate);
+    if (newTotalRepaid >= totalAmountDue) {
+        newStatus = 'repaid';
+    }
+
+    firestoreTransaction.update(loanRef, {
+        totalRepaid: newTotalRepaid,
+        repaymentSchedule: updatedSchedule,
+        status: newStatus,
+    });
+  });
+  console.log(`[LoanService] Repayment of ${repaymentAmount} for loan ${loanId} processed successfully.`);
 }

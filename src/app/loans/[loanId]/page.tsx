@@ -20,6 +20,8 @@ import { Label } from '@/components/ui/label';
 import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useUser } from '@/contexts/UserContext';
+import { processLoanRepayment } from '@/services/loanService';
 
 const getLoanStatusBadgeClasses = (status: Loan['status']) => {
   switch (status) {
@@ -45,6 +47,7 @@ export default function LoanDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { currentUser } = useUser();
   const loanId = params.loanId as string;
 
   const [loan, setLoan] = useState<Loan | null>(null);
@@ -83,36 +86,39 @@ export default function LoanDetailPage() {
   }, [fetchLoanDetails]);
 
   const handleRepayment = async () => {
-    if (!loan) return;
+    if (!loan || !currentUser) {
+        toast({ title: "Error", description: "Loan or user data not available.", variant: "destructive"});
+        return;
+    }
     const amount = parseFloat(repaymentAmount);
     if (isNaN(amount) || amount <= 0) {
       toast({ title: "Invalid Amount", description: "Please enter a valid positive amount.", variant: "destructive"});
       return;
     }
     setIsRepaying(true);
-    // This part is still a mock. In a real app, you would call a service function here.
-    await new Promise(resolve => setTimeout(resolve, 1500));
     
-    setLoan(prevLoan => {
-        if (!prevLoan) return null;
-        const newTotalRepaid = prevLoan.totalRepaid + amount;
-        const updatedSchedule = [...prevLoan.repaymentSchedule].map(r => {
-            if(r.status === 'pending' && amount > 0) {
-                const paidAmount = Math.min(amount, r.amountDue - (r.amountPaid || 0));
-                r.amountPaid = (r.amountPaid || 0) + paidAmount;
-                if (r.amountPaid >= r.amountDue) {
-                    r.status = 'paid';
-                    r.paymentDate = new Date().toISOString();
-                }
-            }
-            return r;
-        });
-        return { ...prevLoan, totalRepaid: newTotalRepaid, repaymentSchedule: updatedSchedule };
-    });
+    try {
+      await processLoanRepayment(loan.id, amount, currentUser.id);
 
-    toast({ title: "Repayment Submitted (Mock)", description: `Repayment of ${amount} for loan ${loan.id} submitted.`});
-    setRepaymentAmount('');
-    setIsRepaying(false);
+      toast({ 
+          title: "Repayment Successful", 
+          description: `Your payment of ${amount.toLocaleString()} has been recorded.`
+      });
+      
+      setRepaymentAmount('');
+      // Refresh data from server
+      await fetchLoanDetails();
+
+    } catch (error) {
+      console.error("Failed to process repayment:", error);
+      toast({
+          title: "Repayment Failed",
+          description: error instanceof Error ? error.message : "An unknown error occurred.",
+          variant: "destructive"
+      });
+    } finally {
+        setIsRepaying(false);
+    }
   };
   
   if (isLoading) {
@@ -159,7 +165,8 @@ export default function LoanDetailPage() {
     );
   }
 
-  const progressPercentage = loan.amount > 0 ? (loan.totalRepaid / loan.amount) * 100 : 0;
+  const totalAmountDue = loan.amount * (1 + loan.interestRate);
+  const progressPercentage = totalAmountDue > 0 ? (loan.totalRepaid / totalAmountDue) * 100 : 0;
 
   return (
     <AppLayout>
@@ -217,7 +224,7 @@ export default function LoanDetailPage() {
                 <div className="space-y-2">
                     <Progress value={progressPercentage} aria-label={`${progressPercentage.toFixed(0)}% repaid`} className="h-3 sm:h-4" />
                     <p className="text-xs sm:text-sm text-muted-foreground text-right">
-                        {loan.totalRepaid.toLocaleString()} / {loan.amount.toLocaleString()} repaid ({progressPercentage.toFixed(1)}%)
+                        {loan.totalRepaid.toLocaleString()} / {totalAmountDue.toLocaleString()} repaid ({progressPercentage.toFixed(1)}%)
                     </p>
                 </div>
                 {loan.status === 'active' && (
@@ -249,7 +256,7 @@ export default function LoanDetailPage() {
             <CardTitle className="font-headline text-lg sm:text-xl">Repayment Schedule</CardTitle>
           </CardHeader>
           <CardContent className="p-0 sm:p-2 md:p-4">
-            {loan.repaymentSchedule.length > 0 ? (
+            {loan.repaymentSchedule && loan.repaymentSchedule.length > 0 ? (
                 <ScrollArea className="max-h-[400px] w-full">
                   <Table>
                     <TableHeader>
@@ -264,7 +271,7 @@ export default function LoanDetailPage() {
                     <TableBody>
                       {loan.repaymentSchedule.map((repayment) => (
                         <TableRow key={repayment.id}>
-                          <TableCell className="text-xs sm:text-sm">{new Date(repayment.dueDate).toLocaleDateString()}</TableCell>
+                          <TableCell className="text-xs sm:text-sm">{new Date(repayment.dueDate as string).toLocaleDateString()}</TableCell>
                           <TableCell className="text-right text-xs sm:text-sm">{repayment.amountDue.toLocaleString()}</TableCell>
                           <TableCell className="text-right text-xs sm:text-sm">{repayment.amountPaid?.toLocaleString() ?? '-'}</TableCell>
                           <TableCell>
@@ -272,7 +279,7 @@ export default function LoanDetailPage() {
                               {repayment.status.charAt(0).toUpperCase() + repayment.status.slice(1)}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-xs sm:text-sm hidden md:table-cell">{repayment.paymentDate ? new Date(repayment.paymentDate).toLocaleDateString() : '-'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm hidden md:table-cell">{repayment.paymentDate ? new Date(repayment.paymentDate as string).toLocaleDateString() : '-'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
