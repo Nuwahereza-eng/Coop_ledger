@@ -59,6 +59,8 @@ export interface Transaction {
   amount: number; // Positive for income to wallet, negative for outgoing
   date: string;
   description: string;
+  hash?: string;
+  previousHash?: string;
   relatedLoanId?: string;
   relatedContributionId?: string;
 }

@@ -3,7 +3,6 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '../../AppLayout';
-// import { getWalletById as getMockWalletById, mockMembers } from '@/lib/mockData'; // Replaced
 import type { GroupWallet, Member as MemberType, Transaction } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,13 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContributeForm } from '@/components/features/wallets/ContributeForm';
 import { TransactionListItem } from '@/components/features/records/TransactionListItem';
-import { ArrowLeft, Users, DollarSign, Landmark, ListCollapse, PlusCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Users, ListCollapse, PlusCircle, Loader2, AlertTriangle, Landmark } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
-import { getWalletById } from '@/services/walletService'; // Using Firestore service
+import { useEffect, useState, useCallback } from 'react';
+import { getWalletById } from '@/services/walletService';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { mockMembers } from '@/lib/mockData'; // Still using for placeholder members if wallet.members is empty
+import { mockMembers } from '@/lib/mockData';
 
 export default function WalletDetailPage() {
   const params = useParams();
@@ -28,33 +27,29 @@ export default function WalletDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchWalletDetails = useCallback(async () => {
     if (!walletId) return;
-    console.log(`[WalletDetailPage] useEffect triggered for walletId: ${walletId}`);
-
-    async function fetchWalletDetails() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        console.log(`[WalletDetailPage] Fetching details for wallet: ${walletId}`);
-        const firestoreWallet = await getWalletById(walletId);
-        console.log(`[WalletDetailPage] Fetched wallet details for ${walletId}:`, firestoreWallet);
-        if (firestoreWallet) {
-          setWallet(firestoreWallet);
-        } else {
-          setError(`Wallet with ID "${walletId}" not found.`);
-          console.warn(`[WalletDetailPage] Wallet ${walletId} not found after fetch.`);
-        }
-      } catch (err) {
-        console.error(`[WalletDetailPage] Failed to fetch wallet ${walletId}:`, err);
-        setError(err instanceof Error ? err.message : "An unknown error occurred while fetching wallet details.");
-      } finally {
-        setIsLoading(false);
-        console.log(`[WalletDetailPage] Finished fetching for ${walletId}. Loading state:`, false);
+    console.log(`[WalletDetailPage] fetchWalletDetails triggered for walletId: ${walletId}`);
+    try {
+      setIsLoading(true);
+      setError(null);
+      const firestoreWallet = await getWalletById(walletId);
+      if (firestoreWallet) {
+        setWallet(firestoreWallet);
+      } else {
+        setError(`Wallet with ID "${walletId}" not found.`);
       }
+    } catch (err) {
+      console.error(`[WalletDetailPage] Failed to fetch wallet ${walletId}:`, err);
+      setError(err instanceof Error ? err.message : "An unknown error occurred while fetching wallet details.");
+    } finally {
+      setIsLoading(false);
     }
-    fetchWalletDetails();
   }, [walletId]);
+
+  useEffect(() => {
+    fetchWalletDetails();
+  }, [fetchWalletDetails]);
 
   if (isLoading) {
     return (
@@ -100,10 +95,8 @@ export default function WalletDetailPage() {
     );
   }
 
-  // Use wallet.members if available from Firestore, otherwise fallback to mockMembers for display
-  // This part needs refinement based on how members are actually associated and fetched for a wallet from Firestore
   const displayMembers = wallet.members && wallet.members.length > 0 ? wallet.members : mockMembers.slice(0,3);
-  const displayTransactions = wallet.transactions || [];
+  const displayTransactions = wallet.transactions ? [...wallet.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [];
 
   const creatorName = wallet.creatorId 
     ? (wallet.members?.find(m => m.id === wallet.creatorId)?.name || wallet.creatorId) 
@@ -161,7 +154,7 @@ export default function WalletDetailPage() {
                 {displayTransactions.length > 0 ? (
                   <ScrollArea className="h-[300px] sm:h-[350px]">
                     <div className="divide-y divide-border">
-                    {displayTransactions.slice(0, 10).map(tx => ( 
+                    {displayTransactions.map(tx => ( 
                       <TransactionListItem key={tx.id} transaction={tx} />
                     ))}
                     </div>
@@ -172,7 +165,7 @@ export default function WalletDetailPage() {
               </CardContent>
                <CardFooter className="p-4 sm:p-6">
                 <Button variant="outline" asChild className="text-sm">
-                    <Link href="/records">View All Wallet Records</Link>
+                    <Link href="/records">View All Platform Records</Link>
                 </Button>
               </CardFooter>
             </Card>
@@ -187,7 +180,7 @@ export default function WalletDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
-                <ContributeForm wallet={wallet} />
+                <ContributeForm wallet={wallet} onSuccess={fetchWalletDetails} />
               </CardContent>
             </Card>
 
