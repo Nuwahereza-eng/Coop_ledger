@@ -2,40 +2,11 @@
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, Timestamp, addDoc, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import type { GroupWallet, Member, Transaction, Repayment } from '@/types';
+import { sha256, serializeTransactionForHashing, GENESIS_HASH } from '@/lib/crypto';
 
 
 // #region Hashing and Serialization
-async function sha256(message: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(message);
-  // This API is available in both browser and modern Node.js environments.
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-function serializeTransactionForHashing(tx: Omit<Transaction, 'hash' | 'id'> & { id?: string }): string {
-    // Creates a stable, string representation of a transaction for hashing.
-    // The order of keys is important for consistent hashes.
-    // The date is converted to an ISO string for consistent hashing.
-    const dateAsString = tx.date instanceof Timestamp ? tx.date.toDate().toISOString() : String(tx.date);
-
-    const dataToHash = {
-        id: tx.id,
-        walletId: tx.walletId,
-        memberId: tx.memberId,
-        type: tx.type,
-        amount: tx.amount,
-        date: dateAsString, 
-        description: tx.description,
-        previousHash: tx.previousHash,
-        relatedLoanId: tx.relatedLoanId,
-        relatedContributionId: tx.relatedContributionId,
-    };
-    return JSON.stringify(dataToHash, Object.keys(dataToHash).sort());
-}
-
-
-const GENESIS_HASH = "0".repeat(64);
+// Hashing and serialization moved to lib/crypto.ts
 // #endregion
 
 
