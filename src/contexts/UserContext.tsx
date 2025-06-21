@@ -36,20 +36,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
           }
       }
 
-      if (storedUserItem) {
+      if (storedUserItem && storedUserItem !== 'null' && storedUserItem !== 'undefined') {
         const storedUser = JSON.parse(storedUserItem) as Member;
         const userInList = currentUsers.find(u => u.id === storedUser.id);
-        if (userInList) {
-            setCurrentUser(userInList);
-        } else {
-            setCurrentUser(currentUsers[0] || null);
-        }
+        setCurrentUser(userInList || null);
       } else {
-        setCurrentUser(currentUsers[0] || null);
+        // No user in local storage, so currentUser remains null
+        setCurrentUser(null);
       }
     } catch (error) {
         console.error("Failed to parse user from localStorage", error);
-        setCurrentUser(mockUsers[0] || null);
+        setCurrentUser(null);
     } finally {
         setIsUserInitialized(true);
     }
@@ -67,9 +64,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('users', JSON.stringify(newUsers));
             return newUsers;
         });
-
-        // Persist updated current user to localStorage
-        localStorage.setItem('currentUser', JSON.stringify(newCurrentUser));
         
         return newCurrentUser;
     });
@@ -77,8 +71,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    if (currentUser && isUserInitialized) {
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    if (isUserInitialized) {
+        if (currentUser) {
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        } else {
+            localStorage.removeItem('currentUser');
+        }
     }
   }, [currentUser, isUserInitialized]);
 

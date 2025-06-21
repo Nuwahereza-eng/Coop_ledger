@@ -19,6 +19,7 @@ import type { GroupWallet } from '@/types';
 import { Repeat, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
+import { useRole } from '@/contexts/RoleContext';
 import { calculateLoanLimit, type CalculateLoanLimitOutput } from '@/ai/flows/calculate-loan-limit';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -34,6 +35,7 @@ export function LoanRequestForm() {
   const { toast } = useToast();
   const router = useRouter();
   const { currentUser } = useUser();
+  const { userRole } = useRole(); // Get user role
   const [isLoading, setIsLoading] = useState(false);
   const [wallets, setWallets] = useState<GroupWallet[]>([]);
   const [isFetchingWallets, setIsFetchingWallets] = useState(true);
@@ -256,8 +258,17 @@ export function LoanRequestForm() {
                 <FormItem>
                   <FormLabel>Interest Rate (e.g., 0.05 for 5%)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="e.g., 0.05" {...field} />
+                    <Input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder="e.g., 0.05" 
+                      {...field} 
+                      disabled={userRole !== 'admin'}
+                    />
                   </FormControl>
+                  {userRole !== 'admin' && (
+                    <p className="text-xs text-muted-foreground">Interest rate is set by the admin.</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

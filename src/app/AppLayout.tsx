@@ -1,7 +1,8 @@
 
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   SidebarProvider,
   Sidebar,
@@ -13,26 +14,32 @@ import { SidebarNavItems } from '@/components/layout/SidebarNavItems';
 import { memberNavItems } from '@/config/memberNav';
 import { adminNavItems } from '@/config/adminNav';
 import { Button } from '@/components/ui/button';
-import { LogOut, UserCog, User, Sun, Moon, Loader2, Users, Wallet } from 'lucide-react';
+import { LogOut, Loader2, Wallet } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext'; 
 import { useUser } from '@/contexts/UserContext';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { userRole, isRoleInitialized: isRoleInitialized } = useRole();
-  const { currentUser, users, setCurrentUser, isUserInitialized: isUserInitialized } = useUser();
+  const router = useRouter();
+  const { userRole } = useRole();
+  const { currentUser, isUserInitialized, setCurrentUser } = useUser();
+
+  useEffect(() => {
+    // Auth guard: Wait for initialization, then redirect if not logged in.
+    if (isUserInitialized && !currentUser) {
+      router.push('/login');
+    }
+  }, [isUserInitialized, currentUser, router]);
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    // Let the useEffect handle the redirect to ensure context is updated first
+  };
 
   const currentNavItems = userRole === 'admin' ? adminNavItems : memberNavItems;
-
-  const cycleUser = () => {
-    if (!currentUser) return;
-    const currentIndex = users.findIndex(u => u.id === currentUser.id);
-    const nextIndex = (currentIndex + 1) % users.length;
-    setCurrentUser(users[nextIndex]);
-  };
   
-  const isInitialized = isRoleInitialized && isUserInitialized;
-
-  if (!isInitialized || !currentUser) {
+  // The loading state should show if the user context is not yet initialized.
+  // Once it is initialized, the useEffect above will handle the redirect if needed.
+  if (!isUserInitialized || !currentUser) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -63,16 +70,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Button
                 variant="ghost"
                 className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                onClick={cycleUser}
+                onClick={handleLogout}
               >
-                <Users className="h-5 w-5" />
-                <span className="group-data-[collapsible=icon]:hidden">
-                  Switch User
-                </span>
-              </Button>
-              <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
                 <LogOut className="h-5 w-5" />
-                <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+                <span className="group-data-[collapsible=icon]:hidden">
+                  Logout
+                </span>
               </Button>
             </SidebarFooter>
           </Sidebar>
