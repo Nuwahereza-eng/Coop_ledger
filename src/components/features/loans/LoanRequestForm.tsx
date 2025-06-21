@@ -16,8 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 import { getWallets } from '@/services/walletService';
 import { createLoan } from '@/services/loanService';
 import type { GroupWallet } from '@/types';
-import { Repeat, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
+import { Repeat, Loader2, Sparkles, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import { useRole } from '@/contexts/RoleContext';
 import { calculateLoanLimit, type CalculateLoanLimitOutput } from '@/ai/flows/calculate-loan-limit';
@@ -42,6 +43,8 @@ export function LoanRequestForm() {
   
   const [isCalculatingLimit, setIsCalculatingLimit] = useState(false);
   const [limitResult, setLimitResult] = useState<CalculateLoanLimitOutput | null>(null);
+
+  const isVerified = currentUser?.verificationStatus === 'verified';
 
   const form = useForm<z.infer<typeof loanRequestSchema>>({
     resolver: zodResolver(loanRequestSchema.refine(
@@ -109,8 +112,8 @@ export function LoanRequestForm() {
 
 
   async function onSubmit(data: z.infer<typeof loanRequestSchema>) {
-    if (!currentUser) {
-        toast({ title: "No user found", description: "You must be logged in to request a loan.", variant: "destructive"});
+    if (!currentUser || !isVerified) {
+        toast({ title: "Action not allowed", description: "You must be a verified member to request a loan.", variant: "destructive"});
         return;
     }
     setIsLoading(true);
@@ -170,6 +173,16 @@ export function LoanRequestForm() {
         <CardDescription>Apply for a micro-loan from your group wallet.</CardDescription>
       </CardHeader>
       <CardContent className="p-6">
+        {!isVerified && (
+          <Alert variant="destructive" className="mb-6">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Verification Required</AlertTitle>
+            <AlertDescription>
+              You must be a verified member to apply for a loan. Please{' '}
+              <Link href="/verify" className="underline font-semibold">complete your verification</Link>.
+            </AlertDescription>
+          </Alert>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
@@ -178,7 +191,7 @@ export function LoanRequestForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Request From Wallet</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isVerified}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Choose a wallet" />
@@ -207,7 +220,7 @@ export function LoanRequestForm() {
                         <Label className="font-semibold text-foreground">Loan Limit Check</Label>
                         <p className="text-xs text-muted-foreground">Let our AI determine your borrowing power.</p>
                     </div>
-                    <Button type="button" onClick={handleCalculateLimit} disabled={isCalculatingLimit || !currentUser}>
+                    <Button type="button" onClick={handleCalculateLimit} disabled={isCalculatingLimit || !currentUser || !isVerified}>
                         {isCalculatingLimit ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
                         {isCalculatingLimit ? 'Calculating...' : 'Calculate My Limit'}
                     </Button>
@@ -230,7 +243,7 @@ export function LoanRequestForm() {
                 <FormItem>
                   <FormLabel>Loan Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="Enter desired amount" {...field} disabled={!limitResult} />
+                    <Input type="number" placeholder="Enter desired amount" {...field} disabled={!limitResult || !isVerified} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -244,7 +257,7 @@ export function LoanRequestForm() {
                 <FormItem>
                   <FormLabel>Repayment Term (Months)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="E.g., 6" {...field} />
+                    <Input type="number" placeholder="E.g., 6" {...field} disabled={!isVerified} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -263,7 +276,7 @@ export function LoanRequestForm() {
                       step="0.01" 
                       placeholder="e.g., 0.05" 
                       {...field} 
-                      disabled={userRole !== 'admin'}
+                      disabled={userRole !== 'admin' || !isVerified}
                     />
                   </FormControl>
                   {userRole !== 'admin' && (
@@ -281,14 +294,14 @@ export function LoanRequestForm() {
                 <FormItem>
                   <FormLabel>Purpose of Loan</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Briefly explain how you will use the funds..." {...field} rows={3} />
+                    <Textarea placeholder="Briefly explain how you will use the funds..." {...field} rows={3} disabled={!isVerified} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <Button type="submit" className="w-full" disabled={isLoading || wallets.length === 0 || !currentUser || !limitResult}>
+            <Button type="submit" className="w-full" disabled={isLoading || wallets.length === 0 || !currentUser || !limitResult || !isVerified}>
               {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting Request...</> : 'Request Loan'}
             </Button>
           </form>
