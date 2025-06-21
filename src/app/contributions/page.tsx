@@ -28,7 +28,7 @@ type ContributionPageFormData = z.infer<typeof contributionPageSchema>;
 
 export default function ContributionsPage() {
   const { toast } = useToast();
-  const { currentUser } = useUser();
+  const { currentUser, updateCurrentUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [wallets, setWallets] = useState<GroupWallet[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -85,6 +85,11 @@ export default function ContributionsPage() {
         toast({ title: "No user found", description: "You must be logged in to make a contribution.", variant: "destructive"});
         return;
     }
+    
+    if (currentUser.personalWalletBalance < data.amount) {
+        toast({ title: "Insufficient Funds", description: `Your personal balance of ${currentUser.personalWalletBalance.toLocaleString()} is less than the contribution amount.`, variant: "destructive"});
+        return;
+    }
 
     setIsLoading(true);
     const targetWallet = wallets.find(w => w.id === data.walletId);
@@ -101,6 +106,9 @@ export default function ContributionsPage() {
             description: `Contribution by ${currentUser.name}`,
             memberId: currentUser.id,
         });
+
+        // Deduct from personal wallet (local state simulation)
+        updateCurrentUser({ personalWalletBalance: currentUser.personalWalletBalance - data.amount });
 
         toast({
             title: 'Contribution Submitted',
@@ -143,7 +151,7 @@ export default function ContributionsPage() {
                 <Wallet className="h-10 w-10 text-primary" />
             </div>
             <CardTitle className="font-headline text-2xl text-foreground">Make a Contribution</CardTitle>
-            <CardDescription>Contribute funds to your selected group wallet.</CardDescription>
+            <CardDescription>Contribute funds to your selected group wallet. Your personal balance is {currentUser?.personalWalletBalance.toLocaleString()} {wallets[0]?.tokenType || '...'} </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <Form {...form}>

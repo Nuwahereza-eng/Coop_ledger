@@ -2,7 +2,7 @@
 'use client';
 
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Member } from '@/types';
 import { mockUsers } from '@/lib/mockData';
 
@@ -10,37 +10,71 @@ interface UserContextType {
   currentUser: Member | null;
   setCurrentUser: Dispatch<SetStateAction<Member | null>>;
   users: Member[];
+  updateCurrentUser: (updatedData: Partial<Member>) => void;
   isUserInitialized: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [users] = useState<Member[]>(mockUsers);
+  const [users, setUsers] = useState<Member[]>(mockUsers);
   const [currentUser, setCurrentUser] = useState<Member | null>(null);
   const [isUserInitialized, setIsUserInitialized] = useState(false);
 
   useEffect(() => {
     try {
       const storedUserItem = localStorage.getItem('currentUser');
+      const storedUsersItem = localStorage.getItem('users');
+
+      let currentUsers = mockUsers;
+      if (storedUsersItem) {
+          const storedUsers = JSON.parse(storedUsersItem);
+          // Quick validation
+          if(Array.isArray(storedUsers) && storedUsers.length === mockUsers.length) {
+            currentUsers = storedUsers;
+            setUsers(storedUsers);
+          }
+      }
+
       if (storedUserItem) {
         const storedUser = JSON.parse(storedUserItem) as Member;
-        // Verify if the stored user is still in our mock list
-        if (users.find(u => u.id === storedUser.id)) {
-            setCurrentUser(storedUser);
+        const userInList = currentUsers.find(u => u.id === storedUser.id);
+        if (userInList) {
+            setCurrentUser(userInList);
         } else {
-            setCurrentUser(users[0] || null);
+            setCurrentUser(currentUsers[0] || null);
         }
       } else {
-        setCurrentUser(users[0] || null);
+        setCurrentUser(currentUsers[0] || null);
       }
     } catch (error) {
         console.error("Failed to parse user from localStorage", error);
-        setCurrentUser(users[0] || null);
+        setCurrentUser(mockUsers[0] || null);
     } finally {
         setIsUserInitialized(true);
     }
-  }, [users]);
+  }, []);
+
+  const updateCurrentUser = useCallback((updatedData: Partial<Member>) => {
+    setCurrentUser(prevUser => {
+        if (!prevUser) return null;
+        const newCurrentUser = { ...prevUser, ...updatedData };
+        
+        // Also update the user in the main list
+        setUsers(prevUsers => {
+            const newUsers = prevUsers.map(u => u.id === newCurrentUser.id ? newCurrentUser : u);
+            // Persist updated users list to localStorage
+            localStorage.setItem('users', JSON.stringify(newUsers));
+            return newUsers;
+        });
+
+        // Persist updated current user to localStorage
+        localStorage.setItem('currentUser', JSON.stringify(newCurrentUser));
+        
+        return newCurrentUser;
+    });
+  }, []);
+
 
   useEffect(() => {
     if (currentUser && isUserInitialized) {
@@ -48,7 +82,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser, isUserInitialized]);
 
-  const value = { currentUser, setCurrentUser, users, isUserInitialized };
+  const value = { currentUser, setCurrentUser, users, updateCurrentUser, isUserInitialized };
 
   return (
     <UserContext.Provider value={value}>

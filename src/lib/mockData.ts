@@ -4,10 +4,10 @@ import type { GroupWallet, Loan, Transaction, Member, Contribution } from '@/typ
 // Note: As Firestore integration progresses, these mock arrays will be gradually phased out or used only as fallbacks/testing.
 
 export const mockUsers: Member[] = [
-  { id: 'user-aisha-01', name: 'Aisha Ibrahim', role: 'member', verificationStatus: 'verified', creditScore: 75 },
-  { id: 'user-john-02', name: 'John Okello', role: 'member', verificationStatus: 'pending' },
-  { id: 'user-fatima-03', name: 'Fatima Diallo', role: 'admin', verificationStatus: 'verified', creditScore: 82 },
-  { id: 'user-david-04', name: 'David Kiptoo', role: 'member', verificationStatus: 'unverified' },
+  { id: 'user-aisha-01', name: 'Aisha Ibrahim', role: 'member', verificationStatus: 'verified', creditScore: 75, personalWalletBalance: 500000 },
+  { id: 'user-john-02', name: 'John Okello', role: 'member', verificationStatus: 'pending', personalWalletBalance: 250000 },
+  { id: 'user-fatima-03', name: 'Fatima Diallo', role: 'admin', verificationStatus: 'verified', creditScore: 82, personalWalletBalance: 1200000 },
+  { id: 'user-david-04', name: 'David Kiptoo', role: 'member', verificationStatus: 'unverified', personalWalletBalance: 100000 },
 ];
 
 export const mockMembers: Member[] = mockUsers; // Alias for backward compatibility if needed

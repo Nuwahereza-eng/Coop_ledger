@@ -13,7 +13,7 @@ import { SidebarNavItems } from '@/components/layout/SidebarNavItems';
 import { memberNavItems } from '@/config/memberNav';
 import { adminNavItems } from '@/config/adminNav';
 import { Button } from '@/components/ui/button';
-import { LogOut, UserCog, User, Sun, Moon, Loader2, Users } from 'lucide-react';
+import { LogOut, UserCog, User, Sun, Moon, Loader2, Users, Wallet } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext'; 
 import { useUser } from '@/contexts/UserContext';
 
@@ -55,6 +55,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <p>Logged in as:</p>
                 <p className="font-bold">{currentUser.name}</p>
                 <p>({currentUser.role})</p>
+                <div className="flex items-center justify-center gap-1 mt-1 font-mono text-primary">
+                  <Wallet className="h-3 w-3" />
+                  <span>{currentUser.personalWalletBalance.toLocaleString()}</span>
+                </div>
               </div>
               <Button
                 variant="ghost"

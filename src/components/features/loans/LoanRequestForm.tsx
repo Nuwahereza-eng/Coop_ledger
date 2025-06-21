@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -16,10 +16,11 @@ import { useToast } from '@/hooks/use-toast';
 import { getWallets } from '@/services/walletService';
 import { createLoan } from '@/services/loanService';
 import type { GroupWallet } from '@/types';
-import { Repeat, Loader2 } from 'lucide-react';
+import { Repeat, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
-
+import { calculateLoanLimit, type CalculateLoanLimitOutput } from '@/ai/flows/calculate-loan-limit';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const loanRequestSchema = z.object({
   walletId: z.string().min(1, { message: 'Please select a wallet.' }),
@@ -29,8 +30,6 @@ const loanRequestSchema = z.object({
   interestRate: z.coerce.number().min(0, { message: 'Interest rate cannot be negative.'}).max(1, { message: 'Interest rate cannot exceed 100% (1.0).'}),
 });
 
-type LoanRequestFormData = z.infer<typeof loanRequestSchema>;
-
 export function LoanRequestForm() {
   const { toast } = useToast();
   const router = useRouter();
@@ -38,6 +37,33 @@ export function LoanRequestForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [wallets, setWallets] = useState<GroupWallet[]>([]);
   const [isFetchingWallets, setIsFetchingWallets] = useState(true);
+  
+  const [isCalculatingLimit, setIsCalculatingLimit] = useState(false);
+  const [limitResult, setLimitResult] = useState<CalculateLoanLimitOutput | null>(null);
+
+  const form = useForm<z.infer<typeof loanRequestSchema>>({
+    resolver: zodResolver(loanRequestSchema.refine(
+      (data) => {
+        if (limitResult && data.amount > limitResult.loanLimit) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "Amount cannot exceed your calculated loan limit.",
+        path: ["amount"],
+      }
+    )),
+    defaultValues: {
+      walletId: '',
+      amount: 0,
+      termMonths: 6,
+      purpose: '',
+      interestRate: 0.05, // Default to 5%
+    },
+  });
+
+  const selectedWalletId = form.watch('walletId');
 
   useEffect(() => {
     async function fetchWallets() {
@@ -57,20 +83,30 @@ export function LoanRequestForm() {
     }
     fetchWallets();
   }, [toast]);
+  
+  const handleCalculateLimit = useCallback(async () => {
+    if (!currentUser) return;
+    
+    setIsCalculatingLimit(true);
+    setLimitResult(null);
+    try {
+      const result = await calculateLoanLimit({ memberId: currentUser.id });
+      setLimitResult(result);
+      form.setValue('amount', Math.min(form.getValues('amount'), result.loanLimit));
+      toast({
+        title: "Loan Limit Calculated",
+        description: `Your loan limit is ${result.loanLimit.toLocaleString()}.`,
+      });
+    } catch(error) {
+      console.error("Error calculating loan limit:", error);
+      toast({ title: "Could not calculate loan limit", variant: "destructive"});
+    } finally {
+      setIsCalculatingLimit(false);
+    }
+  }, [currentUser, toast, form]);
 
 
-  const form = useForm<LoanRequestFormData>({
-    resolver: zodResolver(loanRequestSchema),
-    defaultValues: {
-      walletId: '',
-      amount: 0,
-      termMonths: 6,
-      purpose: '',
-      interestRate: 0.05, // Default to 5%
-    },
-  });
-
-  async function onSubmit(data: LoanRequestFormData) {
+  async function onSubmit(data: z.infer<typeof loanRequestSchema>) {
     if (!currentUser) {
         toast({ title: "No user found", description: "You must be logged in to request a loan.", variant: "destructive"});
         return;
@@ -163,6 +199,28 @@ export function LoanRequestForm() {
               )}
             />
 
+            <Card className="bg-muted/50 p-4">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                        <Label className="font-semibold text-foreground">Loan Limit Check</Label>
+                        <p className="text-xs text-muted-foreground">Let our AI determine your borrowing power.</p>
+                    </div>
+                    <Button type="button" onClick={handleCalculateLimit} disabled={isCalculatingLimit || !currentUser}>
+                        {isCalculatingLimit ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
+                        {isCalculatingLimit ? 'Calculating...' : 'Calculate My Limit'}
+                    </Button>
+                </div>
+                {limitResult && (
+                    <Alert className="mt-4 bg-background">
+                        <ShieldCheck className="h-4 w-4 text-primary" />
+                        <AlertTitle className="font-bold text-primary">
+                            Your Loan Limit is: {limitResult.loanLimit.toLocaleString()} {wallets.find(w => w.id === selectedWalletId)?.tokenType}
+                        </AlertTitle>
+                        <AlertDescription className="text-xs mt-1">{limitResult.reasoning}</AlertDescription>
+                    </Alert>
+                )}
+            </Card>
+
             <FormField
               control={form.control}
               name="amount"
@@ -170,7 +228,7 @@ export function LoanRequestForm() {
                 <FormItem>
                   <FormLabel>Loan Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="Enter desired amount" {...field} />
+                    <Input type="number" placeholder="Enter desired amount" {...field} disabled={!limitResult} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -219,7 +277,7 @@ export function LoanRequestForm() {
               )}
             />
             
-            <Button type="submit" className="w-full" disabled={isLoading || wallets.length === 0 || !currentUser}>
+            <Button type="submit" className="w-full" disabled={isLoading || wallets.length === 0 || !currentUser || !limitResult}>
               {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting Request...</> : 'Request Loan'}
             </Button>
           </form>

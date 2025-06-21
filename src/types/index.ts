@@ -8,6 +8,8 @@ export interface Member {
   hashedPii?: string; // One-way hash of PII
   verificationStatus: 'verified' | 'pending' | 'unverified';
   creditScore?: number;
+  personalWalletBalance: number;
+  loanLimit?: number;
 }
 
 export interface GroupWallet {

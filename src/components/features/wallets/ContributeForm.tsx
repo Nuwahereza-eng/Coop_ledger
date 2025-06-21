@@ -29,7 +29,7 @@ interface ContributeFormProps {
 
 export function ContributeForm({ wallet, onSuccess }: ContributeFormProps) {
   const { toast } = useToast();
-  const { currentUser } = useUser();
+  const { currentUser, updateCurrentUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<ContributeFormData>({
@@ -45,6 +45,12 @@ export function ContributeForm({ wallet, onSuccess }: ContributeFormProps) {
         toast({ title: "No user found", description: "You must be logged in to make a contribution.", variant: "destructive"});
         return;
     }
+    
+    if (currentUser.personalWalletBalance < data.amount) {
+        toast({ title: "Insufficient Funds", description: `Your personal balance of ${currentUser.personalWalletBalance.toLocaleString()} is less than the contribution amount.`, variant: "destructive"});
+        return;
+    }
+
 
     setIsLoading(true);
 
@@ -55,6 +61,9 @@ export function ContributeForm({ wallet, onSuccess }: ContributeFormProps) {
         description: `Contribution by ${currentUser.name} to ${wallet.name}`,
         memberId: currentUser.id,
       });
+      
+      // Deduct from personal wallet (local state simulation)
+      updateCurrentUser({ personalWalletBalance: currentUser.personalWalletBalance - data.amount });
 
       toast({
         title: 'Contribution Submitted',
