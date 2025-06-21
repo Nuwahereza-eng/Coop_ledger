@@ -15,15 +15,16 @@ interface RoleContextType {
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  // Get the complete user state, including initialization status, from the UserContext.
+  // Get the complete user state, including the initialization status.
   const { currentUser, isUserInitialized } = useUser();
 
   // Determine the role based on the current user. Default to 'member'.
   const userRole = currentUser?.role || 'member';
 
-  // Provide the derived role and the initialization status to children.
+  // Provide the derived role and the initialization status from UserContext to children.
+  // The 'isRoleInitialized' property for this context is set using the 'isUserInitialized' variable.
   return (
-    <RoleContext.Provider value={{ userRole, isRoleInitialized }}>
+    <RoleContext.Provider value={{ userRole, isRoleInitialized: isUserInitialized }}>
       {children}
     </RoleContext.Provider>
   );
