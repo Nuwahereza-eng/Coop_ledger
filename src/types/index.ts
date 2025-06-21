@@ -55,7 +55,7 @@ export interface Repayment {
   status: 'pending' | 'paid' | 'overdue';
 }
 
-export type TransactionType = 'contribution' | 'loan_disbursement' | 'loan_repayment' | 'interest_accrual' | 'wallet_creation';
+export type TransactionType = 'contribution' | 'loan_disbursement' | 'loan_repayment' | 'interest_accrual' | 'wallet_creation' | 'member_join';
 
 export interface Transaction {
   id: string;

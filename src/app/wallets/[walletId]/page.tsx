@@ -14,20 +14,23 @@ import { ArrowLeft, Users, ListCollapse, PlusCircle, Loader2, AlertTriangle, Lan
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState, useCallback } from 'react';
-import { getWalletById } from '@/services/walletService';
+import { getWalletById, addMemberToWallet } from '@/services/walletService';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { mockMembers } from '@/lib/mockData';
 import { useUser } from '@/contexts/UserContext';
+import { useToast } from '@/hooks/use-toast';
 
 export default function WalletDetailPage() {
   const params = useParams();
   const router = useRouter();
   const walletId = params.walletId as string;
   const { currentUser } = useUser();
+  const { toast } = useToast();
   
   const [wallet, setWallet] = useState<GroupWallet | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
 
   const fetchWalletDetails = useCallback(async () => {
     if (!walletId) return;
@@ -52,6 +55,47 @@ export default function WalletDetailPage() {
   useEffect(() => {
     fetchWalletDetails();
   }, [fetchWalletDetails]);
+
+  const handleJoinWallet = async () => {
+    if (!currentUser) {
+        toast({ title: "You must be logged in to join a wallet.", variant: "destructive" });
+        return;
+    }
+    if (!wallet) {
+        toast({ title: "Wallet not found.", variant: "destructive" });
+        return;
+    }
+
+    setIsJoining(true);
+    try {
+        const newMember: MemberType = {
+            id: currentUser.id,
+            name: currentUser.name,
+            role: currentUser.role || 'member',
+            verificationStatus: currentUser.verificationStatus,
+            personalWalletBalance: currentUser.personalWalletBalance,
+        };
+
+        await addMemberToWallet(wallet.id, newMember);
+
+        toast({
+            title: "Successfully Joined!",
+            description: `You are now a member of "${wallet.name}".`,
+        });
+        
+        await fetchWalletDetails(); // Refresh the wallet data
+    } catch (error) {
+        console.error("Failed to join wallet:", error);
+        toast({
+            title: "Failed to Join",
+            description: error instanceof Error ? error.message : "There was an error while trying to join the wallet.",
+            variant: "destructive"
+        });
+    } finally {
+        setIsJoining(false);
+    }
+  }
+
 
   const isMember = wallet?.members.some(m => m.id === currentUser?.id) ?? false;
 
@@ -176,18 +220,33 @@ export default function WalletDetailPage() {
           </div>
 
           <div className="space-y-6 sm:space-y-8">
-            {isMember && (
-                <Card className="shadow-md">
-                  <CardHeader className="p-4 sm:p-6">
-                    <CardTitle className="flex items-center gap-2 font-headline text-lg sm:text-xl">
-                      <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                      Make a Contribution
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 sm:p-6">
-                    <ContributeForm wallet={wallet} onSuccess={fetchWalletDetails} />
-                  </CardContent>
-                </Card>
+            {!isMember ? (
+              <Card className="shadow-md">
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 font-headline text-lg sm:text-xl">
+                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                    Join this Wallet
+                  </CardTitle>
+                  <CardDescription>Become a member to start contributing and request loans.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6">
+                  <Button onClick={handleJoinWallet} disabled={isJoining || !currentUser} className="w-full">
+                    {isJoining ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Joining...</> : 'Join Wallet'}
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="shadow-md">
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 font-headline text-lg sm:text-xl">
+                    <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                    Make a Contribution
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6">
+                  <ContributeForm wallet={wallet} onSuccess={fetchWalletDetails} />
+                </CardContent>
+              </Card>
             )}
 
             <Card className="shadow-md">

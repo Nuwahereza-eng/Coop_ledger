@@ -202,7 +202,8 @@ export async function createWallet(walletData: CreateWalletData): Promise<string
         id: walletData.creatorId,
         name: walletData.creatorName,
         role: 'admin', // Creator is admin of the wallet by default
-        verificationStatus: 'pending',
+        verificationStatus: 'pending', // Creator still needs to verify
+        personalWalletBalance: 0 // This should be looked up, but default for now
     };
 
     const genesisTransaction: Omit<Transaction, 'hash'> = {
@@ -296,4 +297,59 @@ export async function addTransactionToWallet(walletId: string, transactionInput:
         console.error(`[WalletService] Error adding transaction to wallet ${walletId}:`, error);
         throw new Error(`Could not add transaction. Firestore error: ${error instanceof Error ? error.message : String(error)}`);
     }
+}
+
+export async function addMemberToWallet(walletId: string, member: Member): Promise<void> {
+  const walletRef = doc(db, 'wallets', walletId);
+
+  try {
+    await runTransaction(db, async (firestoreTransaction) => {
+      const walletDoc = await firestoreTransaction.get(walletRef);
+      if (!walletDoc.exists()) {
+        throw new Error("Wallet not found!");
+      }
+
+      const walletData = walletDoc.data();
+      
+      const memberExists = (walletData.members || []).some((m: Member) => m.id === member.id);
+      if (memberExists) {
+        console.log(`[WalletService] Member ${member.id} is already in wallet ${walletId}. Nothing to do.`);
+        return; 
+      }
+
+      const currentTransactionsWithTimestamps = (walletData.transactions || []) as (Transaction & {date: Timestamp})[];
+      const lastTransaction = currentTransactionsWithTimestamps.length > 0
+          ? [...currentTransactionsWithTimestamps].sort((a, b) => b.date.toMillis() - a.date.toMillis())[0]
+          : null;
+      const previousHash = lastTransaction?.hash ?? GENESIS_HASH;
+
+      const joinTransaction: Omit<Transaction, 'hash'> = {
+          id: `txn-join-${new Date().getTime()}-${Math.random().toString(16).slice(2)}`,
+          type: 'member_join',
+          amount: 0,
+          date: Timestamp.now(),
+          description: `Member ${member.name} joined the wallet.`,
+          previousHash: previousHash,
+          walletId: walletId,
+          memberId: member.id,
+      };
+
+      const hash = await sha256(serializeTransactionForHashing(joinTransaction));
+      const finalJoinTransaction: Transaction & { date: Timestamp } = {
+          ...joinTransaction,
+          hash: hash,
+      };
+      
+      console.log("[WalletService] Adding new member and join transaction:", member, finalJoinTransaction);
+
+      firestoreTransaction.update(walletRef, {
+          members: arrayUnion(member),
+          transactions: arrayUnion(finalJoinTransaction),
+      });
+    });
+    console.log(`[WalletService] Member ${member.id} successfully added to wallet ${walletId}.`);
+  } catch (error) {
+    console.error(`[WalletService] Error adding member to wallet ${walletId}:`, error);
+    throw new Error(`Could not add member. Firestore error: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }

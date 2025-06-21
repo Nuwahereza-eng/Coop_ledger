@@ -4,7 +4,7 @@
 import type { Transaction } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Landmark, Upload, TrendingUp, TrendingDown, CircleDollarSign, FileText, Fingerprint, Copy } from 'lucide-react';
+import { Landmark, Upload, TrendingUp, TrendingDown, CircleDollarSign, FileText, Fingerprint, Copy, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface TransactionListItemProps {
@@ -17,6 +17,7 @@ const getTransactionIcon = (type: Transaction['type']) => {
   if (type === 'loan_repayment') return <TrendingUp className="h-5 w-5 text-blue-500" />;
   if (type === 'interest_accrual') return <CircleDollarSign className="h-5 w-5 text-purple-500" />;
   if (type === 'wallet_creation') return <Landmark className="h-5 w-5 text-indigo-500" />;
+  if (type === 'member_join') return <UserPlus className="h-5 w-5 text-cyan-500" />;
   return <FileText className="h-5 w-5 text-gray-500" />;
 };
 
@@ -61,6 +62,7 @@ export function TransactionListItem({ transaction }: TransactionListItemProps) {
               transaction.type === 'contribution' ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-800/30 dark:text-green-300 dark:border-green-700' :
               transaction.type === 'loan_disbursement' ? 'bg-red-100 text-red-700 border-red-300 dark:bg-red-800/30 dark:text-red-300 dark:border-red-700' :
               transaction.type === 'loan_repayment' ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-800/30 dark:text-blue-300 dark:border-blue-700' :
+              transaction.type === 'member_join' ? 'bg-cyan-100 text-cyan-700 border-cyan-300 dark:bg-cyan-800/30 dark:text-cyan-300 dark:border-cyan-700' :
               'bg-muted text-muted-foreground border-border'
             )}>
               {transaction.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
