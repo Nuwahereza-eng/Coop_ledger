@@ -44,9 +44,9 @@ export default function RecordsPage() {
   const filteredTransactions = allTransactions
     .filter(tx => filterType === 'all' || tx.type === filterType)
     .filter(tx => tx.description.toLowerCase().includes(searchTerm.toLowerCase()) || tx.id.includes(searchTerm))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
 
-  const transactionTypes: Array<TransactionType | 'all'> = ['all', 'contribution', 'loan_disbursement', 'loan_repayment', 'interest_accrual', 'wallet_creation'];
+  const transactionTypes: Array<TransactionType | 'all'> = ['all', 'contribution', 'loan_disbursement', 'loan_repayment', 'interest_accrual', 'wallet_creation', 'member_join'];
 
   return (
     <AppLayout>
