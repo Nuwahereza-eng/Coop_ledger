@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AppLayout from '../AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,25 +32,30 @@ export default function ContributionsPage() {
   const [isClient, setIsClient] = useState(false);
   const [isFetchingWallets, setIsFetchingWallets] = useState(true);
 
+  const fetchUserWallets = useCallback(async () => {
+    try {
+        console.log('[ContributionsPage] Fetching user wallets...');
+        setIsFetchingWallets(true);
+        const fetchedWallets = await getWallets();
+        setWallets(fetchedWallets);
+        console.log('[ContributionsPage] Successfully fetched wallets:', fetchedWallets);
+    } catch (error) {
+        toast({
+            title: 'Error fetching wallets',
+            description: 'Could not load your group wallets. Please try again later.',
+            variant: 'destructive',
+        });
+        console.error("[ContributionsPage] Error in fetchUserWallets:", error);
+    } finally {
+        setIsFetchingWallets(false);
+    }
+  }, [toast]);
+
+
   useEffect(() => {
     setIsClient(true);
-    async function fetchUserWallets() {
-        try {
-            setIsFetchingWallets(true);
-            const fetchedWallets = await getWallets();
-            setWallets(fetchedWallets);
-        } catch (error) {
-            toast({
-                title: 'Error fetching wallets',
-                description: 'Could not load your group wallets. Please try again later.',
-                variant: 'destructive',
-            });
-        } finally {
-            setIsFetchingWallets(false);
-        }
-    }
     fetchUserWallets();
-  }, [toast]);
+  }, [fetchUserWallets]);
 
   const form = useForm<ContributionPageFormData>({
     resolver: zodResolver(contributionPageSchema),
@@ -95,9 +100,14 @@ export default function ContributionsPage() {
 
         toast({
             title: 'Contribution Submitted',
-            description: `Your contribution of ${data.amount.toLocaleString()} ${data.tokenType} to "${targetWallet.name}" has been submitted.`,
+            description: `Your contribution of ${data.amount.toLocaleString()} ${data.tokenType} to "${targetWallet.name}" has been recorded.`,
         });
+        
+        // Re-fetch wallets to update balances in the dropdown
+        await fetchUserWallets();
+
         form.reset({ walletId: '', amount: 0, tokenType: '' });
+
     } catch(error) {
         console.error("Failed to make contribution:", error);
         toast({

@@ -1,27 +1,50 @@
+
 "use client";
 
 import AppLayout from '../AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TransactionListItem } from '@/components/features/records/TransactionListItem';
-import { mockTransactions } from '@/lib/mockData';
 import type { Transaction, TransactionType } from '@/types';
-import { History, Filter } from 'lucide-react';
-import { useState } from 'react';
+import { History, Filter, Loader2, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getWallets } from '@/services/walletService';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function RecordsPage() {
-  const allTransactions: Transaction[] = mockTransactions; 
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<TransactionType | 'all'>('all');
+  
+  useEffect(() => {
+    async function fetchTransactions() {
+      try {
+        console.log("[RecordsPage] Fetching all wallets to aggregate transactions...");
+        setIsLoading(true);
+        setError(null);
+        const wallets = await getWallets();
+        const transactions = wallets.flatMap(wallet => wallet.transactions || []);
+        console.log(`[RecordsPage] Aggregated ${transactions.length} transactions from ${wallets.length} wallets.`);
+        setAllTransactions(transactions);
+      } catch (err) {
+        console.error("[RecordsPage] Failed to fetch transactions:", err);
+        setError(err instanceof Error ? err.message : "An unknown error occurred while fetching records.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchTransactions();
+  }, []);
 
   const filteredTransactions = allTransactions
     .filter(tx => filterType === 'all' || tx.type === filterType)
     .filter(tx => tx.description.toLowerCase().includes(searchTerm.toLowerCase()) || tx.id.includes(searchTerm))
-    .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const transactionTypes: Array<TransactionType | 'all'> = ['all', 'contribution', 'loan_disbursement', 'loan_repayment', 'interest_accrual', 'wallet_creation'];
 
@@ -62,20 +85,38 @@ export default function RecordsPage() {
                 </div>
             </CardHeader>
             <CardContent className="p-0 sm:p-2 md:p-4">
-            {filteredTransactions.length > 0 ? (
-                <ScrollArea className="h-[calc(100vh-20rem)] sm:h-[calc(100vh-22rem)] border rounded-md">
-                     <div className="divide-y divide-border">
-                        {filteredTransactions.map((tx) => (
-                        <TransactionListItem key={tx.id} transaction={tx} />
-                        ))}
-                    </div>
-                </ScrollArea>
-            ) : (
-                <div className="text-center py-12">
-                    <History className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-xl text-muted-foreground">No transactions found matching your criteria.</p>
+              {isLoading && (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                  <p className="ml-4 text-muted-foreground">Loading records...</p>
                 </div>
-            )}
+              )}
+              
+              {error && !isLoading && (
+                <Alert variant="destructive" className="max-w-2xl mx-auto my-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error Fetching Records</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {!isLoading && !error && filteredTransactions.length > 0 ? (
+                  <ScrollArea className="h-[calc(100vh-20rem)] sm:h-[calc(100vh-22rem)] border rounded-md">
+                      <div className="divide-y divide-border">
+                          {filteredTransactions.map((tx) => (
+                          <TransactionListItem key={tx.id} transaction={tx} />
+                          ))}
+                      </div>
+                  </ScrollArea>
+              ) : null}
+
+              {!isLoading && !error && filteredTransactions.length === 0 && (
+                  <div className="text-center py-12">
+                      <History className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-xl text-muted-foreground">No transactions found matching your criteria.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Try clearing your filters or creating a new transaction.</p>
+                  </div>
+              )}
             </CardContent>
         </Card>
       </div>
