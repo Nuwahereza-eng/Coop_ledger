@@ -1,6 +1,4 @@
 
-'use server';
-
 import type { Transaction } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 
