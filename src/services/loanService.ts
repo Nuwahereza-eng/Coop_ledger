@@ -118,7 +118,7 @@ export async function approveLoan(loanId: string): Promise<void> {
       throw new Error("Insufficient funds in the wallet to disburse this loan.");
     }
     
-    const currentTransactions = (walletData.transactions || []).map(t => convertLoanTimestampsToISO(t)) as (Transaction & {date: string})[];
+    const currentTransactions = (walletData.transactions || []).map(t => convertTimestampsToISO(t)) as (Transaction & {date: string})[];
     const sortedTransactions = currentTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const lastTransaction = sortedTransactions.length > 0 ? sortedTransactions[0] : null;
 
@@ -204,7 +204,7 @@ export async function processLoanRepayment(loanId: string, repaymentAmount: numb
     const walletData = walletDoc.data() as GroupWallet;
 
     // 2. Create Wallet Transaction
-    const currentTransactions = (walletData.transactions || []).map(t => convertLoanTimestampsToISO(t)) as (Transaction & {date: string})[];
+    const currentTransactions = (walletData.transactions || []).map(t => convertTimestampsToISO(t)) as (Transaction & {date: string})[];
     const sortedTransactions = currentTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const lastTransaction = sortedTransactions.length > 0 ? sortedTransactions[0] : null;
     const previousHash = lastTransaction?.hash ?? GENESIS_HASH;
@@ -232,23 +232,24 @@ export async function processLoanRepayment(loanId: string, repaymentAmount: numb
     });
 
     // 4. Update Loan
-    const newTotalRepaid = loanData.totalRepaid + repaymentAmount;
+    const newTotalRepaid = (loanData.totalRepaid || 0) + repaymentAmount;
     let amountToApply = repaymentAmount;
-    const updatedSchedule = loanData.repaymentSchedule.map(r => {
-        const repayment = convertLoanTimestampsToISO(r);
-        if (repayment.status !== 'paid' && amountToApply > 0) {
-            const remainingDue = repayment.amountDue - (repayment.amountPaid || 0);
+    const updatedSchedule = loanData.repaymentSchedule.map((repayment: Repayment) => {
+        const updatedRepayment = { ...repayment }; // Work with a copy
+        if (updatedRepayment.status !== 'paid' && amountToApply > 0) {
+            const remainingDue = updatedRepayment.amountDue - (updatedRepayment.amountPaid || 0);
             const paymentForThisInstallment = Math.min(amountToApply, remainingDue);
             
-            repayment.amountPaid = (repayment.amountPaid || 0) + paymentForThisInstallment;
+            updatedRepayment.amountPaid = (updatedRepayment.amountPaid || 0) + paymentForThisInstallment;
             amountToApply -= paymentForThisInstallment;
 
-            if (repayment.amountPaid >= repayment.amountDue) {
-                repayment.status = 'paid';
-                repayment.paymentDate = Timestamp.now();
+            // Use a small epsilon for float comparison to be safe
+            if (updatedRepayment.amountPaid >= (updatedRepayment.amountDue - 0.001)) {
+                updatedRepayment.status = 'paid';
+                updatedRepayment.paymentDate = Timestamp.now();
             }
         }
-        return repayment;
+        return updatedRepayment;
     });
     
     let newStatus = loanData.status;
