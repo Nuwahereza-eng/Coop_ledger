@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -12,28 +13,48 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { mockWallets } from '@/lib/mockData';
+import { getWallets } from '@/services/walletService';
+import { createLoan } from '@/services/loanService';
 import type { GroupWallet } from '@/types';
 import { Repeat, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
 
 const loanRequestSchema = z.object({
   walletId: z.string().min(1, { message: 'Please select a wallet.' }),
   amount: z.coerce.number().positive({ message: 'Loan amount must be positive.' }),
   termMonths: z.coerce.number().int().min(1, { message: 'Term must be at least 1 month.' }).max(36, { message: 'Term cannot exceed 36 months.' }),
   purpose: z.string().min(10, { message: 'Please describe the purpose of the loan (min 10 characters).' }).max(200, {message: 'Purpose too long (max 200 characters).'}),
+  interestRate: z.coerce.number().min(0, { message: 'Interest rate cannot be negative.'}).max(1, { message: 'Interest rate cannot exceed 100% (1.0).'}),
 });
 
 type LoanRequestFormData = z.infer<typeof loanRequestSchema>;
 
 export function LoanRequestForm() {
   const { toast } = useToast();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const wallets: GroupWallet[] = mockWallets; 
-  const [isClient, setIsClient] = useState(false);
+  const [wallets, setWallets] = useState<GroupWallet[]>([]);
+  const [isFetchingWallets, setIsFetchingWallets] = useState(true);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    async function fetchWallets() {
+      try {
+        setIsFetchingWallets(true);
+        const fetchedWallets = await getWallets();
+        setWallets(fetchedWallets);
+      } catch (error) {
+        toast({
+          title: "Error fetching wallets",
+          description: "Could not load group wallets for selection.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsFetchingWallets(false);
+      }
+    }
+    fetchWallets();
+  }, [toast]);
 
 
   const form = useForm<LoanRequestFormData>({
@@ -43,23 +64,42 @@ export function LoanRequestForm() {
       amount: 0,
       termMonths: 6,
       purpose: '',
+      interestRate: 0.05, // Default to 5%
     },
   });
 
   async function onSubmit(data: LoanRequestFormData) {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const targetWallet = wallets.find(w => w.id === data.walletId);
-    console.log('Requesting loan from wallet:', data);
-    toast({
-      title: 'Loan Request Submitted',
-      description: `Your loan request of ${data.amount} from "${targetWallet?.name}" for ${data.termMonths} months has been submitted for approval.`,
-    });
-    setIsLoading(false);
-    form.reset();
+    // In a real app, memberId would come from an auth context.
+    const memberId = "app-user-01"; 
+
+    try {
+      const newLoanId = await createLoan({
+        ...data,
+        memberId: memberId,
+      });
+
+      const targetWallet = wallets.find(w => w.id === data.walletId);
+      toast({
+        title: 'Loan Request Submitted',
+        description: `Your loan request (ID: ${newLoanId.substring(0,6)}...) from "${targetWallet?.name}" has been submitted for approval.`,
+      });
+      form.reset();
+      router.push('/loans');
+
+    } catch (error) {
+      console.error("Failed to create loan request:", error);
+      toast({
+        title: "Loan Request Failed",
+        description: "There was an error submitting your request.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  if (!isClient) {
+  if (isFetchingWallets) {
     return (
         <Card className="w-full max-w-lg mx-auto">
              <CardHeader className="text-center p-6">
@@ -71,6 +111,7 @@ export function LoanRequestForm() {
             <CardContent className="p-6">
                 <div className="flex justify-center items-center h-60">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="ml-4 text-muted-foreground">Loading wallets...</p>
                 </div>
             </CardContent>
         </Card>
@@ -102,11 +143,15 @@ export function LoanRequestForm() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {wallets.map(wallet => (
-                        <SelectItem key={wallet.id} value={wallet.id}>
-                          {wallet.name} (Balance: {wallet.balance.toLocaleString()} {wallet.tokenType})
-                        </SelectItem>
-                      ))}
+                      {wallets.length > 0 ? (
+                        wallets.map(wallet => (
+                          <SelectItem key={wallet.id} value={wallet.id}>
+                            {wallet.name} (Balance: {wallet.balance.toLocaleString()} {wallet.tokenType})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>No wallets found. Create a wallet first.</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -141,6 +186,20 @@ export function LoanRequestForm() {
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="interestRate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Interest Rate (e.g., 0.05 for 5%)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" placeholder="e.g., 0.05" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}
@@ -156,7 +215,7 @@ export function LoanRequestForm() {
               )}
             />
             
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading || wallets.length === 0}>
               {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting Request...</> : 'Request Loan'}
             </Button>
           </form>

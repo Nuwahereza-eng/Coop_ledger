@@ -3,21 +3,23 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '../../AppLayout';
-import { getLoanById, mockWallets } from '@/lib/mockData';
-import type { Loan, Repayment } from '@/types';
+import { getLoanById } from '@/services/loanService';
+import { getWalletById } from '@/services/walletService';
+import type { Loan, Repayment, GroupWallet } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, CalendarDays, DollarSign, Percent, Repeat, Wallet, CheckCircle2, XCircle, Hourglass, Loader2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, DollarSign, Percent, Repeat, Wallet, CheckCircle2, XCircle, Hourglass, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const getLoanStatusBadgeClasses = (status: Loan['status']) => {
   switch (status) {
@@ -44,11 +46,103 @@ export default function LoanDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const loanId = params.loanId as string;
-  const loanData: Loan | undefined = getLoanById(loanId); // This is treated as initial data
 
-  const [loan, setLoan] = useState<Loan | undefined>(loanData);
+  const [loan, setLoan] = useState<Loan | null>(null);
+  const [sourceWallet, setSourceWallet] = useState<GroupWallet | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const [repaymentAmount, setRepaymentAmount] = useState('');
   const [isRepaying, setIsRepaying] = useState(false);
+
+  const fetchLoanDetails = useCallback(async () => {
+    if (!loanId) return;
+    try {
+      setIsLoading(true);
+      setError(null);
+      const fetchedLoan = await getLoanById(loanId);
+      if (fetchedLoan) {
+        setLoan(fetchedLoan);
+        if (fetchedLoan.walletId) {
+            const fetchedWallet = await getWalletById(fetchedLoan.walletId);
+            setSourceWallet(fetchedWallet || null);
+        }
+      } else {
+        setError(`Loan with ID "${loanId}" not found.`);
+      }
+    } catch (err) {
+      console.error(`[LoanDetailPage] Failed to fetch loan ${loanId}:`, err);
+      setError(err instanceof Error ? err.message : "An unknown error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loanId]);
+
+  useEffect(() => {
+    fetchLoanDetails();
+  }, [fetchLoanDetails]);
+
+  const handleRepayment = async () => {
+    if (!loan) return;
+    const amount = parseFloat(repaymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({ title: "Invalid Amount", description: "Please enter a valid positive amount.", variant: "destructive"});
+      return;
+    }
+    setIsRepaying(true);
+    // This part is still a mock. In a real app, you would call a service function here.
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    setLoan(prevLoan => {
+        if (!prevLoan) return null;
+        const newTotalRepaid = prevLoan.totalRepaid + amount;
+        const updatedSchedule = [...prevLoan.repaymentSchedule].map(r => {
+            if(r.status === 'pending' && amount > 0) {
+                const paidAmount = Math.min(amount, r.amountDue - (r.amountPaid || 0));
+                r.amountPaid = (r.amountPaid || 0) + paidAmount;
+                if (r.amountPaid >= r.amountDue) {
+                    r.status = 'paid';
+                    r.paymentDate = new Date().toISOString();
+                }
+            }
+            return r;
+        });
+        return { ...prevLoan, totalRepaid: newTotalRepaid, repaymentSchedule: updatedSchedule };
+    });
+
+    toast({ title: "Repayment Submitted (Mock)", description: `Repayment of ${amount} for loan ${loan.id} submitted.`});
+    setRepaymentAmount('');
+    setIsRepaying(false);
+  };
+  
+  if (isLoading) {
+    return (
+        <AppLayout>
+            <div className="flex justify-center items-center h-[calc(100vh-10rem)]">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="ml-4 text-muted-foreground">Loading loan details...</p>
+            </div>
+        </AppLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="text-center py-12">
+          <AlertTriangle className="h-16 w-16 text-destructive mx-auto mb-4" />
+          <h1 className="text-2xl font-semibold text-foreground">Error Loading Loan</h1>
+          <Alert variant="destructive" className="max-w-md mx-auto mt-4">
+            <AlertTitle>Loading Failed</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          <Button onClick={() => router.push('/loans')} className="mt-6">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Loans
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!loan) {
     return (
@@ -65,40 +159,7 @@ export default function LoanDetailPage() {
     );
   }
 
-  const sourceWallet = mockWallets.find(w => w.id === loan.walletId);
   const progressPercentage = loan.amount > 0 ? (loan.totalRepaid / loan.amount) * 100 : 0;
-
-  const handleRepayment = async () => {
-    const amount = parseFloat(repaymentAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast({ title: "Invalid Amount", description: "Please enter a valid positive amount.", variant: "destructive"});
-      return;
-    }
-    setIsRepaying(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setLoan(prevLoan => {
-        if (!prevLoan) return undefined;
-        const newTotalRepaid = prevLoan.totalRepaid + amount;
-        const updatedSchedule = prevLoan.repaymentSchedule.map(r => {
-            if(r.status === 'pending' && amount > 0) { // Naive update for first pending
-                const paidAmount = Math.min(amount, r.amountDue - (r.amountPaid || 0));
-                r.amountPaid = (r.amountPaid || 0) + paidAmount;
-                // amount -= paidAmount; // Reduce amount for next installments if any
-                if (r.amountPaid >= r.amountDue) {
-                    r.status = 'paid';
-                    r.paymentDate = new Date().toISOString();
-                }
-            }
-            return r;
-        });
-        return { ...prevLoan, totalRepaid: newTotalRepaid, repaymentSchedule: updatedSchedule };
-    });
-
-    toast({ title: "Repayment Submitted", description: `Repayment of ${amount} for loan ${loan.id} submitted.`});
-    setRepaymentAmount('');
-    setIsRepaying(false);
-  };
 
   return (
     <AppLayout>
