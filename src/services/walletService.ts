@@ -2,12 +2,14 @@
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, Timestamp, addDoc, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import type { GroupWallet, Member, Transaction, Repayment } from '@/types';
-import { createHash } from 'crypto';
 
 
 // #region Hashing and Serialization
 async function sha256(message: string): Promise<string> {
-  return createHash('sha256').update(message).digest('hex');
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function serializeTransactionForHashing(tx: Omit<Transaction, 'hash'>): string {
