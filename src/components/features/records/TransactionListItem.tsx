@@ -28,7 +28,7 @@ const getTransactionColorClass = (amount: number, type: Transaction['type']) => 
 
 export function TransactionListItem({ transaction }: TransactionListItemProps) {
   const { toast } = useToast();
-  const date = new Date(transaction.date);
+  const date = new Date(transaction.date as string);
   const formattedDate = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   const formattedTime = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
