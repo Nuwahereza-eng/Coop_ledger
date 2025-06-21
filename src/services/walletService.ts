@@ -83,7 +83,7 @@ export async function getWallets(): Promise<GroupWallet[]> {
             typeof convertedData.tokenType !== 'string' ||
             typeof convertedData.creatorId !== 'string'
            ) {
-            console.error(`[WalletService] Wallet ${doc.id} has missing or malformed core fields (name, balance, tokenType, creatorId). Skipping. Actual data:`, convertedData);
+            console.warn(`[WalletService] Skipping wallet document ${doc.id} because it's missing core fields (name, balance, tokenType, etc.) or is empty. Please check this document in your Firestore database.`, {id: doc.id, data: convertedData});
             continue;
         }
 
@@ -148,7 +148,7 @@ export async function getWalletById(id: string): Promise<GroupWallet | undefined
           typeof convertedData.tokenType !== 'string' ||
           typeof convertedData.creatorId !== 'string'
           ) {
-          console.error(`[WalletService] Wallet ${id} (fetched by ID) has missing or malformed core fields. Returning undefined.`);
+          console.warn(`[WalletService] Wallet ${id} (fetched by ID) has missing or malformed core fields. Returning undefined. Please check this document in Firestore.`);
           return undefined;
       }
       
@@ -260,9 +260,14 @@ export async function addTransactionToWallet(walletId: string, transactionInput:
             }
 
             const walletData = walletDoc.data();
-            const currentTransactions = (walletData.transactions || []).map(t => convertTimestampsToISO(t)) as Transaction[];
+            
+            // Note: `walletData.transactions` contains Firestore Timestamps. No conversion needed here.
+            const currentTransactionsWithTimestamps = (walletData.transactions || []) as (Transaction & {date: Timestamp})[];
 
-            const lastTransaction = currentTransactions.length > 0 ? currentTransactions.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] : null;
+            const lastTransaction = currentTransactionsWithTimestamps.length > 0
+                ? [...currentTransactionsWithTimestamps].sort((a, b) => b.date.toMillis() - a.date.toMillis())[0]
+                : null;
+
 
             const previousHash = lastTransaction?.hash ?? GENESIS_HASH;
 
