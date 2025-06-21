@@ -1,43 +1,49 @@
 
 'use client';
 
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import React, { createContext, useContext, useCallback } from 'react';
+import { useUser } from './UserContext'; // Import the new UserContext hook
 
 export type UserRole = 'member' | 'admin';
 
 interface RoleContextType {
   userRole: UserRole;
-  setUserRole: Dispatch<SetStateAction<UserRole>>;
+  setUserRole: (role: UserRole) => void; // Simplified setter
   isRoleInitialized: boolean;
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [userRole, setUserRole] = useState<UserRole>('member');
-  const [isRoleInitialized, setIsRoleInitialized] = useState(false);
+  const { currentUser, setCurrentUser, users, isUserInitialized } = useUser();
 
-  useEffect(() => {
-    // Simulate fetching role or reading from localStorage, then set initialized
-    // For now, just set to member and mark as initialized
-    // In a real app, you might read from localStorage or an API
-    const storedRole = localStorage.getItem('userRole') as UserRole | null;
-    if (storedRole && (storedRole === 'member' || storedRole === 'admin')) {
-      setUserRole(storedRole);
-    }
-    setIsRoleInitialized(true);
-  }, []);
+  const userRole = currentUser?.role || 'member';
 
-  useEffect(() => {
-    if (isRoleInitialized) {
-      localStorage.setItem('userRole', userRole);
+  // This function now switches to the *next available user* with the desired role.
+  const setUserRole = useCallback((role: UserRole) => {
+    const currentIndex = users.findIndex(u => u.id === currentUser?.id);
+    // Start searching from the next user
+    let nextIndex = (currentIndex + 1) % users.length;
+    
+    // Loop through users to find the next one with the desired role
+    for (let i = 0; i < users.length; i++) {
+      const userToTest = users[nextIndex];
+      if (userToTest.role === role) {
+        setCurrentUser(userToTest);
+        return; // Found and set the user, exit
+      }
+      nextIndex = (nextIndex + 1) % users.length;
     }
-  }, [userRole, isRoleInitialized]);
+    
+    // Fallback if no other user with that role is found
+    console.warn(`No other user with role "${role}" found to switch to.`);
+
+  }, [currentUser, users, setCurrentUser]);
 
 
   return (
-    <RoleContext.Provider value={{ userRole, setUserRole, isRoleInitialized }}>
+    <RoleContext.Provider value={{ userRole, setUserRole, isRoleInitialized: isUserInitialized }}>
       {children}
     </RoleContext.Provider>
   );

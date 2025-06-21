@@ -7,7 +7,8 @@ import type { GroupWallet, Member, Transaction, Repayment } from '@/types';
 // #region Hashing and Serialization
 async function sha256(message: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  // This API is available in both browser and modern Node.js environments.
+  const hashBuffer = await crypto.subtle.digest('SHA-256', hashBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
@@ -73,17 +74,15 @@ export async function getWallets(): Promise<GroupWallet[]> {
     for (const doc of walletSnapshot.docs) {
       try {
         const data = doc.data();
-        console.log(`[WalletService] Processing wallet ${doc.id}. Raw data:`, JSON.parse(JSON.stringify(data)));
         
         const convertedData = convertTimestampsToISO(data);
-        console.log(`[WalletService] Wallet ${doc.id} data after timestamp conversion:`, JSON.parse(JSON.stringify(convertedData)));
         
         if (typeof convertedData.name !== 'string' || 
             typeof convertedData.balance !== 'number' || 
             typeof convertedData.tokenType !== 'string' ||
-            typeof convertedData.creatorId !== 'string'
+            !convertedData.creatorId
            ) {
-            console.warn(`[WalletService] Skipping wallet document ${doc.id} because it's missing core fields (name, balance, tokenType, etc.) or is empty. Please check this document in your Firestore database.`, {id: doc.id, data: convertedData});
+            console.warn(`[WalletService] Wallet document ${doc.id} is missing core fields (name, balance, tokenType, creatorId) or is empty. Please check or delete this document in your Firestore database. Skipping.`, {id: doc.id, data: convertedData});
             continue;
         }
 
@@ -118,12 +117,11 @@ export async function getWallets(): Promise<GroupWallet[]> {
               ...t
           })) as Transaction[],
         });
-        console.log(`[WalletService] Successfully processed and added wallet ${doc.id} to list.`);
       } catch (docError) {
         console.error(`[WalletService] Error processing document ${doc.id}:`, docError, "Raw data for this doc:", doc.data());
       }
     }
-    console.log('[WalletService] Finished processing. Wallets list count:', walletsList.length, 'Wallets:', JSON.parse(JSON.stringify(walletsList)));
+    console.log('[WalletService] Finished processing. Wallets list count:', walletsList.length);
     return walletsList;
   } catch (error) {
     console.error("[WalletService] General error fetching wallets collection (e.g., permissions, network): ", error);
@@ -139,14 +137,12 @@ export async function getWalletById(id: string): Promise<GroupWallet | undefined
 
     if (walletDoc.exists()) {
       const data = walletDoc.data();
-      console.log(`[WalletService] Raw data for wallet ${id}:`, JSON.parse(JSON.stringify(data)));
       const convertedData = convertTimestampsToISO(data);
-      console.log(`[WalletService] Converted data for wallet ${id}:`, JSON.parse(JSON.stringify(convertedData)));
 
       if (typeof convertedData.name !== 'string' || 
           typeof convertedData.balance !== 'number' ||
           typeof convertedData.tokenType !== 'string' ||
-          typeof convertedData.creatorId !== 'string'
+          !convertedData.creatorId
           ) {
           console.warn(`[WalletService] Wallet ${id} (fetched by ID) has missing or malformed core fields. Returning undefined. Please check this document in Firestore.`);
           return undefined;
@@ -182,7 +178,6 @@ export async function getWalletById(id: string): Promise<GroupWallet | undefined
               ...t
           })) as Transaction[],
       };
-      console.log(`[WalletService] Wallet ${id} (fetched by ID) after conversion and defaulting:`, JSON.parse(JSON.stringify(wallet)));
       return wallet;
     } else {
       console.warn(`[WalletService] Wallet with id ${id} not found.`);
@@ -198,13 +193,15 @@ interface CreateWalletData {
   name: string;
   tokenType: string;
   creatorId: string; 
+  creatorName: string;
 }
 
 export async function createWallet(walletData: CreateWalletData): Promise<string> {
     console.log('[WalletService] Attempting to create wallet with data:', walletData);
     const creatorMember: Member = {
         id: walletData.creatorId,
-        name: `User ${walletData.creatorId.substring(0, 8)}...`,
+        name: walletData.creatorName,
+        role: 'admin', // Creator is admin of the wallet by default
         verificationStatus: 'pending',
     };
 
@@ -213,7 +210,7 @@ export async function createWallet(walletData: CreateWalletData): Promise<string
         type: 'wallet_creation',
         amount: 0,
         date: Timestamp.now(), // Use Firestore Timestamp
-        description: `Wallet "${walletData.name}" created by ${walletData.creatorId}.`,
+        description: `Wallet "${walletData.name}" created by ${walletData.creatorName}.`,
         previousHash: GENESIS_HASH,
         memberId: walletData.creatorId
     };
@@ -261,7 +258,6 @@ export async function addTransactionToWallet(walletId: string, transactionInput:
 
             const walletData = walletDoc.data();
             
-            // Note: `walletData.transactions` contains Firestore Timestamps. No conversion needed here.
             const currentTransactionsWithTimestamps = (walletData.transactions || []) as (Transaction & {date: Timestamp})[];
 
             const lastTransaction = currentTransactionsWithTimestamps.length > 0

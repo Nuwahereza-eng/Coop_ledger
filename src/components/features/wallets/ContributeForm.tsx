@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { GroupWallet } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { addTransactionToWallet } from '@/services/walletService';
+import { useUser } from '@/contexts/UserContext';
 
 const contributeSchema = z.object({
   amount: z.coerce.number().positive({ message: 'Amount must be positive.' }),
@@ -28,6 +29,7 @@ interface ContributeFormProps {
 
 export function ContributeForm({ wallet, onSuccess }: ContributeFormProps) {
   const { toast } = useToast();
+  const { currentUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<ContributeFormData>({
@@ -39,16 +41,19 @@ export function ContributeForm({ wallet, onSuccess }: ContributeFormProps) {
   });
 
   async function onSubmit(data: ContributeFormData) {
+    if (!currentUser) {
+        toast({ title: "No user found", description: "You must be logged in to make a contribution.", variant: "destructive"});
+        return;
+    }
+
     setIsLoading(true);
-    // In a real app, memberId would come from an auth context.
-    const memberId = "app-user-01"; 
 
     try {
       await addTransactionToWallet(wallet.id, {
         type: 'contribution',
         amount: data.amount,
-        description: `Contribution by ${memberId} to ${wallet.name}`,
-        memberId: memberId,
+        description: `Contribution by ${currentUser.name} to ${wallet.name}`,
+        memberId: currentUser.id,
       });
 
       toast({
@@ -109,7 +114,7 @@ export function ContributeForm({ wallet, onSuccess }: ContributeFormProps) {
           )}
         />
         
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" className="w-full" disabled={isLoading || !currentUser}>
           {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : 'Contribute'}
         </Button>
       </form>

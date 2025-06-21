@@ -16,6 +16,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Wallet, Loader2 } from 'lucide-react';
+import { useUser } from '@/contexts/UserContext';
 
 const contributionPageSchema = z.object({
   walletId: z.string().min(1, { message: 'Please select a wallet.' }),
@@ -27,6 +28,7 @@ type ContributionPageFormData = z.infer<typeof contributionPageSchema>;
 
 export default function ContributionsPage() {
   const { toast } = useToast();
+  const { currentUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [wallets, setWallets] = useState<GroupWallet[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -79,6 +81,11 @@ export default function ContributionsPage() {
 
 
   async function onSubmit(data: ContributionPageFormData) {
+    if (!currentUser) {
+        toast({ title: "No user found", description: "You must be logged in to make a contribution.", variant: "destructive"});
+        return;
+    }
+
     setIsLoading(true);
     const targetWallet = wallets.find(w => w.id === data.walletId);
     if (!targetWallet) {
@@ -86,16 +93,13 @@ export default function ContributionsPage() {
         setIsLoading(false);
         return;
     }
-    
-    // In a real app, memberId would come from auth context
-    const memberId = "app-user-01"; 
 
     try {
         await addTransactionToWallet(data.walletId, {
             type: 'contribution',
             amount: data.amount,
-            description: `Contribution by ${memberId}`,
-            memberId: memberId,
+            description: `Contribution by ${currentUser.name}`,
+            memberId: currentUser.id,
         });
 
         toast({
@@ -203,7 +207,7 @@ export default function ContributionsPage() {
                   )}
                 />
                 
-                <Button type="submit" className="w-full" disabled={isLoading || !selectedWalletId}>
+                <Button type="submit" className="w-full" disabled={isLoading || !selectedWalletId || !currentUser}>
                   {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : 'Contribute Funds'}
                 </Button>
               </form>

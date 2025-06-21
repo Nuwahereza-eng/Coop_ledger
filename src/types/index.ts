@@ -4,6 +4,7 @@ import type { Timestamp } from 'firebase/firestore';
 export interface Member {
   id: string;
   name: string;
+  role?: 'member' | 'admin';
   hashedPii?: string; // One-way hash of PII
   verificationStatus: 'verified' | 'pending' | 'unverified';
   creditScore?: number;

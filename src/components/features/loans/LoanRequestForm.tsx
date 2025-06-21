@@ -18,6 +18,7 @@ import { createLoan } from '@/services/loanService';
 import type { GroupWallet } from '@/types';
 import { Repeat, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/contexts/UserContext';
 
 
 const loanRequestSchema = z.object({
@@ -33,6 +34,7 @@ type LoanRequestFormData = z.infer<typeof loanRequestSchema>;
 export function LoanRequestForm() {
   const { toast } = useToast();
   const router = useRouter();
+  const { currentUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [wallets, setWallets] = useState<GroupWallet[]>([]);
   const [isFetchingWallets, setIsFetchingWallets] = useState(true);
@@ -69,14 +71,16 @@ export function LoanRequestForm() {
   });
 
   async function onSubmit(data: LoanRequestFormData) {
+    if (!currentUser) {
+        toast({ title: "No user found", description: "You must be logged in to request a loan.", variant: "destructive"});
+        return;
+    }
     setIsLoading(true);
-    // In a real app, memberId would come from an auth context.
-    const memberId = "app-user-01"; 
 
     try {
       const newLoanId = await createLoan({
         ...data,
-        memberId: memberId,
+        memberId: currentUser.id,
       });
 
       const targetWallet = wallets.find(w => w.id === data.walletId);
@@ -215,7 +219,7 @@ export function LoanRequestForm() {
               )}
             />
             
-            <Button type="submit" className="w-full" disabled={isLoading || wallets.length === 0}>
+            <Button type="submit" className="w-full" disabled={isLoading || wallets.length === 0 || !currentUser}>
               {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting Request...</> : 'Request Loan'}
             </Button>
           </form>
