@@ -196,6 +196,15 @@ export async function processLoanRepayment(loanId: string, repaymentAmount: numb
     }
     const loanData = loanDoc.data() as Loan;
 
+    // Server-side check for overpayment
+    const totalAmountDue = loanData.amount * (1 + loanData.interestRate);
+    const remainingBalance = totalAmountDue - (loanData.totalRepaid || 0);
+
+    // Using a small epsilon for floating point comparison to prevent minor issues
+    if (repaymentAmount > remainingBalance + 0.01) {
+        throw new Error(`Repayment amount of ${repaymentAmount.toLocaleString()} exceeds the remaining balance of ${remainingBalance.toLocaleString()}.`);
+    }
+
     const walletRef = doc(db, 'wallets', loanData.walletId);
     const walletDoc = await firestoreTransaction.get(walletRef);
     if (!walletDoc.exists()) {
@@ -253,8 +262,7 @@ export async function processLoanRepayment(loanId: string, repaymentAmount: numb
     });
     
     let newStatus = loanData.status;
-    const totalAmountDue = loanData.amount * (1 + loanData.interestRate);
-    if (newTotalRepaid >= totalAmountDue) {
+    if (newTotalRepaid >= totalAmountDue - 0.01) {
         newStatus = 'repaid';
     }
 

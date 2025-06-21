@@ -95,6 +95,20 @@ export default function LoanDetailPage() {
       toast({ title: "Invalid Amount", description: "Please enter a valid positive amount.", variant: "destructive"});
       return;
     }
+
+    const totalAmountDue = loan.amount * (1 + loan.interestRate);
+    const remainingBalance = totalAmountDue - loan.totalRepaid;
+
+    // Use a small epsilon for floating point comparison to prevent minor issues
+    if (amount > remainingBalance + 0.01) {
+        toast({ 
+            title: "Overpayment Not Allowed", 
+            description: `The maximum repayment amount is ${remainingBalance.toLocaleString()}. You tried to pay ${amount.toLocaleString()}.`, 
+            variant: "destructive"
+        });
+        return;
+    }
+    
     setIsRepaying(true);
     
     try {
