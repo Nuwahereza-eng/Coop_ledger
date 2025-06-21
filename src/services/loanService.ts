@@ -118,7 +118,7 @@ export async function approveLoan(loanId: string): Promise<void> {
       throw new Error("Insufficient funds in the wallet to disburse this loan.");
     }
     
-    const currentTransactions = (walletData.transactions || []).map(t => convertTimestampsToISO(t)) as (Transaction & {date: string})[];
+    const currentTransactions = (walletData.transactions || []).map(t => convertLoanTimestampsToISO(t)) as (Transaction & {date: string})[];
     const sortedTransactions = currentTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const lastTransaction = sortedTransactions.length > 0 ? sortedTransactions[0] : null;
 
@@ -204,7 +204,7 @@ export async function processLoanRepayment(loanId: string, repaymentAmount: numb
     const walletData = walletDoc.data() as GroupWallet;
 
     // 2. Create Wallet Transaction
-    const currentTransactions = (walletData.transactions || []).map(t => convertTimestampsToISO(t)) as (Transaction & {date: string})[];
+    const currentTransactions = (walletData.transactions || []).map(t => convertLoanTimestampsToISO(t)) as (Transaction & {date: string})[];
     const sortedTransactions = currentTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const lastTransaction = sortedTransactions.length > 0 ? sortedTransactions[0] : null;
     const previousHash = lastTransaction?.hash ?? GENESIS_HASH;
@@ -266,3 +266,5 @@ export async function processLoanRepayment(loanId: string, repaymentAmount: numb
   });
   console.log(`[LoanService] Repayment of ${repaymentAmount} for loan ${loanId} processed successfully.`);
 }
+
+    
