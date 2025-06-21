@@ -14,7 +14,7 @@ import type { GroupWallet } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormLabel, FormMessage } from '@/components/ui/form';
 import { Wallet, Loader2 } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 
@@ -34,30 +34,38 @@ export default function ContributionsPage() {
   const [isClient, setIsClient] = useState(false);
   const [isFetchingWallets, setIsFetchingWallets] = useState(true);
 
-  const fetchUserWallets = useCallback(async () => {
-    try {
-        console.log('[ContributionsPage] Fetching user wallets...');
-        setIsFetchingWallets(true);
-        const fetchedWallets = await getWallets();
-        setWallets(fetchedWallets);
-        console.log('[ContributionsPage] Successfully fetched wallets:', fetchedWallets);
-    } catch (error) {
-        toast({
-            title: 'Error fetching wallets',
-            description: 'Could not load your group wallets. Please try again later.',
-            variant: 'destructive',
-        });
-        console.error("[ContributionsPage] Error in fetchUserWallets:", error);
-    } finally {
-        setIsFetchingWallets(false);
-    }
-  }, [toast]);
-
-
   useEffect(() => {
     setIsClient(true);
-    fetchUserWallets();
-  }, [fetchUserWallets]);
+
+    async function fetchAndFilterWallets() {
+      if (!currentUser) return; // Don't fetch if no user
+
+      try {
+        console.log('[ContributionsPage] Fetching user wallets...');
+        setIsFetchingWallets(true);
+        const allWallets = await getWallets();
+
+        // The key change: Filter wallets to only include those the user is a member of
+        const memberWallets = allWallets.filter(wallet =>
+          wallet.members.some(member => member.id === currentUser.id)
+        );
+        
+        setWallets(memberWallets);
+        console.log('[ContributionsPage] Successfully fetched and filtered wallets for current user:', memberWallets);
+      } catch (error) {
+        toast({
+          title: 'Error fetching wallets',
+          description: 'Could not load your group wallets. Please try again later.',
+          variant: 'destructive',
+        });
+        console.error("[ContributionsPage] Error in fetchUserWallets:", error);
+      } finally {
+        setIsFetchingWallets(false);
+      }
+    }
+
+    fetchAndFilterWallets();
+  }, [currentUser, toast]); // Dependency on currentUser ensures this runs when user logs in
 
   const form = useForm<ContributionPageFormData>({
     resolver: zodResolver(contributionPageSchema),
@@ -116,7 +124,14 @@ export default function ContributionsPage() {
         });
         
         // Re-fetch wallets to update balances in the dropdown
-        await fetchUserWallets();
+        // The fetch logic will re-run automatically due to the useEffect dependency on `currentUser`
+        // which will be updated by the successful transaction. Let's trigger it manually just in case.
+        if (currentUser) {
+            const allWallets = await getWallets();
+            const memberWallets = allWallets.filter(wallet => wallet.members.some(member => member.id === currentUser.id));
+            setWallets(memberWallets);
+        }
+
 
         form.reset({ walletId: '', amount: 0, tokenType: '' });
 
@@ -151,7 +166,7 @@ export default function ContributionsPage() {
                 <Wallet className="h-10 w-10 text-primary" />
             </div>
             <CardTitle className="font-headline text-2xl text-foreground">Make a Contribution</CardTitle>
-            <CardDescription>Contribute funds to your selected group wallet. Your personal balance is {currentUser?.personalWalletBalance.toLocaleString()} {wallets[0]?.tokenType || '...'} </CardDescription>
+            <CardDescription>Contribute funds to a group wallet you are a member of. Your personal balance is {currentUser?.personalWalletBalance.toLocaleString()} {wallets[0]?.tokenType || '...'} </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <Form {...form}>
@@ -168,15 +183,19 @@ export default function ContributionsPage() {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Choose a wallet" />
+                            <SelectValue placeholder={wallets.length > 0 ? "Choose a wallet" : "You are not a member of any wallets"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {wallets.map(wallet => (
-                            <SelectItem key={wallet.id} value={wallet.id}>
-                              {wallet.name} ({wallet.balance.toLocaleString()} {wallet.tokenType})
-                            </SelectItem>
-                          ))}
+                          {wallets.length > 0 ? (
+                            wallets.map(wallet => (
+                              <SelectItem key={wallet.id} value={wallet.id}>
+                                {wallet.name} ({wallet.balance.toLocaleString()} {wallet.tokenType})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>No wallets to contribute to.</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />

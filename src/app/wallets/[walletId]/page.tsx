@@ -17,11 +17,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { getWalletById } from '@/services/walletService';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { mockMembers } from '@/lib/mockData';
+import { useUser } from '@/contexts/UserContext';
 
 export default function WalletDetailPage() {
   const params = useParams();
   const router = useRouter();
   const walletId = params.walletId as string;
+  const { currentUser } = useUser();
   
   const [wallet, setWallet] = useState<GroupWallet | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,6 +52,8 @@ export default function WalletDetailPage() {
   useEffect(() => {
     fetchWalletDetails();
   }, [fetchWalletDetails]);
+
+  const isMember = wallet?.members.some(m => m.id === currentUser?.id) ?? false;
 
   if (isLoading) {
     return (
@@ -172,17 +176,19 @@ export default function WalletDetailPage() {
           </div>
 
           <div className="space-y-6 sm:space-y-8">
-            <Card className="shadow-md">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="flex items-center gap-2 font-headline text-lg sm:text-xl">
-                  <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                  Make a Contribution
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-6">
-                <ContributeForm wallet={wallet} onSuccess={fetchWalletDetails} />
-              </CardContent>
-            </Card>
+            {isMember && (
+                <Card className="shadow-md">
+                  <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="flex items-center gap-2 font-headline text-lg sm:text-xl">
+                      <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                      Make a Contribution
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 sm:p-6">
+                    <ContributeForm wallet={wallet} onSuccess={fetchWalletDetails} />
+                  </CardContent>
+                </Card>
+            )}
 
             <Card className="shadow-md">
               <CardHeader className="p-4 sm:p-6">
