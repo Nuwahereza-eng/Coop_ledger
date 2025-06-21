@@ -11,76 +11,83 @@ import { useRole } from '@/contexts/RoleContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { mockMembers, mockLoans, mockTransactions } from '@/lib/mockData';
-import { getWallets } from '@/services/walletService'; // Import Firestore service
-import type { GroupWallet } from '@/types';
+import { getWallets } from '@/services/walletService';
+import { getUsers } from '@/services/userService';
+import { getLoans } from '@/services/loanService';
+import type { GroupWallet, Loan } from '@/types';
 
 
 export default function AdminDashboardPage() {
   const { userRole, isRoleInitialized } = useRole();
   const router = useRouter();
 
-  const [wallets, setWallets] = useState<GroupWallet[]>([]);
   const [numWallets, setNumWallets] = useState(0);
   const [totalPlatformBalance, setTotalPlatformBalance] = useState(0);
-  const [isWalletDataLoading, setIsWalletDataLoading] = useState(true);
+  const [numMembers, setNumMembers] = useState(0);
+  const [numPendingLoans, setNumPendingLoans] = useState(0);
+  const [numTotalTransactions, setNumTotalTransactions] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (isRoleInitialized && userRole !== 'admin') {
-      router.replace('/'); // Redirect non-admins to member dashboard
-    }
-  }, [userRole, isRoleInitialized, router]);
-
-  useEffect(() => {
-    if (userRole === 'admin') {
+      router.replace('/'); // Redirect non-admins
+    } else if (userRole === 'admin') {
       async function fetchAdminDashboardData() {
-        console.log('[AdminDashboardPage] Admin role detected, fetching wallet data.');
-        setIsWalletDataLoading(true);
+        console.log('[AdminDashboardPage] Admin role detected, fetching all admin data.');
+        setIsLoading(true);
         try {
-          const fetchedWallets = await getWallets();
-          console.log('[AdminDashboardPage] Fetched wallets for admin dashboard:', fetchedWallets);
-          setWallets(fetchedWallets);
+          // Fetch all data concurrently for better performance
+          const [fetchedWallets, fetchedMembers, fetchedLoans] = await Promise.all([
+            getWallets(),
+            getUsers(),
+            getLoans(),
+          ]);
+
+          // Process Wallet Data
           setNumWallets(fetchedWallets.length);
           const totalBalance = fetchedWallets.reduce((sum, wallet) => sum + wallet.balance, 0);
           setTotalPlatformBalance(totalBalance);
+          const totalTransactions = fetchedWallets.reduce((sum, wallet) => sum + (wallet.transactions?.length || 0), 0);
+          setNumTotalTransactions(totalTransactions);
+          
+          // Process Member Data
+          setNumMembers(fetchedMembers.length);
+
+          // Process Loan Data
+          const pendingLoansCount = fetchedLoans.filter(loan => loan.status === 'pending').length;
+          setNumPendingLoans(pendingLoansCount);
+
         } catch (error) {
-          console.error("[AdminDashboardPage] Error fetching wallet data for admin dashboard:", error);
-          // Potentially set an error state
+          console.error("[AdminDashboardPage] Error fetching data for admin dashboard:", error);
+          // Optional: set an error state to show a message to the user
         } finally {
-          setIsWalletDataLoading(false);
-          console.log('[AdminDashboardPage] Finished fetching wallet data for admin dashboard.');
+          setIsLoading(false);
+          console.log('[AdminDashboardPage] Finished fetching all admin data.');
         }
       }
       fetchAdminDashboardData();
     }
-  }, [userRole, isRoleInitialized]);
-
-  // Calculate dynamic data for admin features
-  // For now, only wallet data is from Firestore. Others remain mock.
-  const numMembers = mockMembers.length;
-  const numPendingLoans = mockLoans.filter(loan => loan.status === 'pending').length;
-  const numTotalTransactions = mockTransactions.length; 
-
-  const isLoadingInitialData = !isRoleInitialized || (userRole === 'admin' && isWalletDataLoading && numWallets === 0 && totalPlatformBalance === 0 && wallets.length === 0); // Ensure initial state is considered
-
+  }, [userRole, isRoleInitialized, router]);
 
   const adminFeatures = [
-    { title: 'Manage Members', description: `View, approve, and manage all ${numMembers} SACCO members.`, icon: Users, href: '/admin/manage-members', cta: 'Go to Members', img: 'https://placehold.co/600x400.png', hint: 'user management list', disabled: false },
-    { title: 'Wallets Overview', description: `Monitor ${isLoadingInitialData ? '...' : numWallets} group wallets. Total balance: ${isLoadingInitialData ? '...' : totalPlatformBalance.toLocaleString()} UGX.`, icon: Landmark, href: '/admin/wallets-overview', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'financial dashboard charts', disabled: false },
-    { title: 'System Logs', description: `Track all ${numTotalTransactions} system-level activities and important events.`, icon: History, href: '/admin/system-logs', cta: 'View Logs', img: 'https://placehold.co/600x400.png', hint: 'server logs text', disabled: false },
-    { title: 'Approve Loans', description: `Review and approve/reject ${numPendingLoans > 0 ? numPendingLoans : 'loan'} applications.`, icon: ListChecks, href: '/admin/approve-loans', cta: 'Review Loans', img: 'https://placehold.co/600x400.png', hint: 'approval checklist tasks', disabled: true },
+    { title: 'Manage Members', description: `View, approve, and manage all ${isLoading ? '...' : numMembers} SACCO members.`, icon: Users, href: '/admin/manage-members', cta: 'Go to Members', img: 'https://placehold.co/600x400.png', hint: 'user management list', disabled: false },
+    { title: 'Wallets Overview', description: `Monitor ${isLoading ? '...' : numWallets} group wallets. Total balance: ${isLoading ? '...' : totalPlatformBalance.toLocaleString()} UGX.`, icon: Landmark, href: '/admin/wallets-overview', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'financial dashboard charts', disabled: false },
+    { title: 'System Logs', description: `Track all ${isLoading ? '...' : numTotalTransactions} system-level activities and important events.`, icon: History, href: '/admin/system-logs', cta: 'View Logs', img: 'https://placehold.co/600x400.png', hint: 'server logs text', disabled: false },
+    { title: 'Approve Loans', description: `Review and approve/reject ${isLoading ? '...' : (numPendingLoans > 0 ? numPendingLoans : 'loan')} applications.`, icon: ListChecks, href: '/admin/approve-loans', cta: 'Review Loans', img: 'https://placehold.co/600x400.png', hint: 'approval checklist tasks', disabled: true },
     { title: 'Platform Analytics', description: 'View key metrics and reports on platform usage and growth.', icon: BarChart3, href: '/admin/analytics', cta: 'View Analytics', img: 'https://placehold.co/600x400.png', hint: 'data charts graphs', disabled: true },
     { title: 'System Settings', description: 'Configure global platform settings, parameters, and integrations.', icon: Settings, href: '/admin/settings', cta: 'Configure', img: 'https://placehold.co/600x400.png', hint: 'gears settings interface', disabled: true },
   ];
 
 
-  if (isLoadingInitialData || userRole !== 'admin') {
+  if (isLoading || !isRoleInitialized || userRole !== 'admin') {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          {isRoleInitialized && userRole !== 'admin' && <p className="mt-4 text-muted-foreground">Redirecting...</p>}
-          {userRole === 'admin' && isLoadingInitialData && <p className="mt-4 text-muted-foreground">Loading admin data...</p>}
+          {isRoleInitialized && userRole !== 'admin' 
+              ? <p className="mt-4 text-muted-foreground">Redirecting...</p>
+              : <p className="mt-4 text-muted-foreground">Loading admin dashboard...</p>
+          }
         </div>
       </AppLayout>
     );
