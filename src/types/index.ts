@@ -1,3 +1,6 @@
+
+import type { Timestamp } from 'firebase/firestore';
+
 export interface Member {
   id: string;
   name: string;
@@ -22,7 +25,7 @@ export interface Contribution {
   walletId: string;
   amount: number;
   tokenType: string;
-  date: string; // ISO Date string
+  date: string | Timestamp; // ISO Date string on client, Timestamp in Firestore
 }
 
 export interface Loan {
@@ -34,18 +37,18 @@ export interface Loan {
   termMonths: number;
   purpose: string;
   status: 'pending' | 'active' | 'repaid' | 'defaulted' | 'rejected';
-  requestDate: string;
-  approvalDate?: string;
+  requestDate: string | Timestamp;
+  approvalDate?: string | Timestamp;
   repaymentSchedule: Repayment[];
   totalRepaid: number;
 }
 
 export interface Repayment {
   id: string;
-  dueDate: string;
+  dueDate: string | Timestamp;
   amountDue: number;
   amountPaid?: number;
-  paymentDate?: string;
+  paymentDate?: string | Timestamp;
   status: 'pending' | 'paid' | 'overdue';
 }
 
@@ -57,7 +60,7 @@ export interface Transaction {
   memberId?: string; // Optional, e.g. for interest accrual to wallet
   type: TransactionType;
   amount: number; // Positive for income to wallet, negative for outgoing
-  date: string;
+  date: string | Timestamp; // ISO Date string on client, Timestamp in Firestore
   description: string;
   hash?: string;
   previousHash?: string;

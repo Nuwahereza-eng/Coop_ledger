@@ -12,16 +12,19 @@ async function sha256(message: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function serializeTransactionForHashing(tx: Omit<Transaction, 'hash'>): string {
+function serializeTransactionForHashing(tx: Omit<Transaction, 'hash' | 'id'> & { id?: string }): string {
     // Creates a stable, string representation of a transaction for hashing.
     // The order of keys is important for consistent hashes.
+    // The date is converted to an ISO string for consistent hashing.
+    const dateAsString = tx.date instanceof Timestamp ? tx.date.toDate().toISOString() : String(tx.date);
+
     const dataToHash = {
         id: tx.id,
         walletId: tx.walletId,
         memberId: tx.memberId,
         type: tx.type,
         amount: tx.amount,
-        date: tx.date,
+        date: dateAsString, 
         description: tx.description,
         previousHash: tx.previousHash,
         relatedLoanId: tx.relatedLoanId,
@@ -29,6 +32,7 @@ function serializeTransactionForHashing(tx: Omit<Transaction, 'hash'>): string {
     };
     return JSON.stringify(dataToHash, Object.keys(dataToHash).sort());
 }
+
 
 const GENESIS_HASH = "0".repeat(64);
 // #endregion
@@ -208,7 +212,7 @@ export async function createWallet(walletData: CreateWalletData): Promise<string
         id: `txn-genesis-${new Date().getTime()}`,
         type: 'wallet_creation',
         amount: 0,
-        date: new Date().toISOString(),
+        date: Timestamp.now(), // Use Firestore Timestamp
         description: `Wallet "${walletData.name}" created by ${walletData.creatorId}.`,
         previousHash: GENESIS_HASH,
         memberId: walletData.creatorId
@@ -234,7 +238,7 @@ export async function createWallet(walletData: CreateWalletData): Promise<string
         console.log('[WalletService] Wallet created successfully with ID:', docRef.id);
         return docRef.id;
     } catch (error) {
-        console.error("[WalletService] Error creating wallet: ", error);
+        console.error("[WalletService] Error creating wallet document in Firestore: ", error);
         if (error instanceof Error) {
             console.error("[WalletService] Firestore error details:", error.message, error.stack);
         }
@@ -242,7 +246,8 @@ export async function createWallet(walletData: CreateWalletData): Promise<string
     }
 }
 
-export type NewTransactionInput = Omit<Transaction, 'id' | 'hash' | 'previousHash' | 'date'>;
+
+export type NewTransactionInput = Omit<Transaction, 'id' | 'hash' | 'previousHash' | 'date' | 'walletId'>;
 
 export async function addTransactionToWallet(walletId: string, transactionInput: NewTransactionInput): Promise<void> {
     const walletRef = doc(db, 'wallets', walletId);
@@ -255,21 +260,22 @@ export async function addTransactionToWallet(walletId: string, transactionInput:
             }
 
             const walletData = walletDoc.data();
-            const currentTransactions = (walletData.transactions || []) as Transaction[];
+            const currentTransactions = (walletData.transactions || []).map(t => convertTimestampsToISO(t)) as Transaction[];
 
-            const lastTransaction = currentTransactions.length > 0 ? currentTransactions[currentTransactions.length - 1] : null;
+            const lastTransaction = currentTransactions.length > 0 ? currentTransactions.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] : null;
+
             const previousHash = lastTransaction?.hash ?? GENESIS_HASH;
 
             const newTransactionData: Omit<Transaction, 'hash'> = {
                 ...transactionInput,
                 id: `txn-${new Date().getTime()}-${Math.random().toString(16).slice(2)}`,
-                date: new Date().toISOString(),
+                date: Timestamp.now(), // Use Firestore Timestamp
                 previousHash: previousHash,
                 walletId: walletId,
             };
 
             const hash = await sha256(serializeTransactionForHashing(newTransactionData));
-            const finalNewTransaction: Transaction = {
+            const finalNewTransaction: Transaction & { date: Timestamp } = {
                 ...newTransactionData,
                 hash: hash,
             };
