@@ -205,12 +205,12 @@ export default function LoanDetailPage() {
           </CardHeader>
           <div className="w-full h-40 sm:h-52 overflow-hidden">
              <Image 
-                src={`https://placehold.co/1200x400.png`}
+                src={`https://loremflickr.com/1200/400/finance,document`}
                 alt={`Loan ${loan.id} banner`}
                 width={1200}
                 height={400}
                 className="w-full h-full object-cover"
-                data-ai-hint="financial agreement document"
+                data-ai-hint="financial document"
                 priority
             />
           </div>

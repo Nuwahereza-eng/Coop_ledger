@@ -70,12 +70,12 @@ export default function AdminDashboardPage() {
   }, [userRole, isRoleInitialized, router]);
 
   const adminFeatures = [
-    { title: 'Manage Members', description: `View, approve, and manage all ${isLoading ? '...' : numMembers} SACCO members.`, icon: Users, href: '/admin/manage-members', cta: 'Go to Members', img: 'https://placehold.co/600x400.png', hint: 'user management list', disabled: false },
-    { title: 'Wallets Overview', description: `Monitor ${isLoading ? '...' : numWallets} group wallets. Total balance: ${isLoading ? '...' : totalPlatformBalance.toLocaleString()} UGX.`, icon: Landmark, href: '/admin/wallets-overview', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'financial dashboard charts', disabled: false },
-    { title: 'System Logs', description: `Track all ${isLoading ? '...' : numTotalTransactions} system-level activities and important events.`, icon: History, href: '/admin/system-logs', cta: 'View Logs', img: 'https://placehold.co/600x400.png', hint: 'server logs text', disabled: false },
-    { title: 'Approve Loans', description: `Review and approve/reject ${isLoading ? '...' : (numPendingLoans > 0 ? numPendingLoans + ' pending' : 'loan')} applications.`, icon: ListChecks, href: '/admin/approve-loans', cta: 'Review Loans', img: 'https://placehold.co/600x400.png', hint: 'approval checklist tasks', disabled: false },
-    { title: 'Platform Analytics', description: 'View key metrics and reports on platform usage and growth.', icon: BarChart3, href: '/admin/analytics', cta: 'View Analytics', img: 'https://placehold.co/600x400.png', hint: 'data charts graphs', disabled: true },
-    { title: 'System Settings', description: 'Configure global platform settings, parameters, and integrations.', icon: Settings, href: '/admin/settings', cta: 'Configure', img: 'https://placehold.co/600x400.png', hint: 'gears settings interface', disabled: true },
+    { title: 'Manage Members', description: `View, approve, and manage all ${isLoading ? '...' : numMembers} SACCO members.`, icon: Users, href: '/admin/manage-members', cta: 'Go to Members', img: 'https://loremflickr.com/600/400/users,management', hint: 'user management', disabled: false },
+    { title: 'Wallets Overview', description: `Monitor ${isLoading ? '...' : numWallets} group wallets. Total balance: ${isLoading ? '...' : totalPlatformBalance.toLocaleString()} UGX.`, icon: Landmark, href: '/admin/wallets-overview', cta: 'View Wallets', img: 'https://loremflickr.com/600/400/finance,dashboard', hint: 'financial dashboard', disabled: false },
+    { title: 'System Logs', description: `Track all ${isLoading ? '...' : numTotalTransactions} system-level activities and important events.`, icon: History, href: '/admin/system-logs', cta: 'View Logs', img: 'https://loremflickr.com/600/400/server,log', hint: 'server logs', disabled: false },
+    { title: 'Approve Loans', description: `Review and approve/reject ${isLoading ? '...' : (numPendingLoans > 0 ? numPendingLoans + ' pending' : 'loan')} applications.`, icon: ListChecks, href: '/admin/approve-loans', cta: 'Review Loans', img: 'https://loremflickr.com/600/400/approval,checklist', hint: 'approval checklist', disabled: false },
+    { title: 'Platform Analytics', description: 'View key metrics and reports on platform usage and growth.', icon: BarChart3, href: '/admin/analytics', cta: 'View Analytics', img: 'https://loremflickr.com/600/400/data,chart', hint: 'data charts', disabled: true },
+    { title: 'System Settings', description: 'Configure global platform settings, parameters, and integrations.', icon: Settings, href: '/admin/settings', cta: 'Configure', img: 'https://loremflickr.com/600/400/gears,settings', hint: 'gears settings', disabled: true },
   ];
 
 
@@ -109,12 +109,12 @@ export default function AdminDashboardPage() {
             </div>
             <div className="md:w-1/3 mt-6 md:mt-0 flex justify-center">
               <Image 
-                src="https://placehold.co/300x300.png" 
+                src="https://loremflickr.com/300/300/security,shield" 
                 alt="Admin illustration" 
                 width={250} 
                 height={250} 
                 className="rounded-lg shadow-md"
-                data-ai-hint="secure administration shield"
+                data-ai-hint="secure administration"
               />
             </div>
           </div>

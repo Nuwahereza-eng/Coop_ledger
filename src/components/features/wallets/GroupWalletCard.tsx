@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -23,12 +24,12 @@ export function GroupWalletCard({ wallet }: GroupWalletCardProps) {
         </div>
         <div className="aspect-video w-full rounded-md overflow-hidden mb-2">
             <Image 
-                src={`https://placehold.co/400x200.png`}
+                src={`https://loremflickr.com/400/200/community,savings`}
                 alt={wallet.name}
                 width={400}
                 height={200}
                 className="w-full h-full object-cover"
-                data-ai-hint="community savings group"
+                data-ai-hint="community savings"
             />
         </div>
         <CardDescription className="text-xs sm:text-sm">Managed in {wallet.tokenType}</CardDescription>

@@ -61,12 +61,12 @@ export default function DashboardPage() {
   const numTotalTransactions = mockTransactions.length;
 
   const memberFeatures = [
-    { title: 'Group Wallets', description: `Access and manage ${isWalletDataLoading && userRole === 'member' ? '...' : numGroupWallets} collective savings group wallets.`, icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://placehold.co/600x400.png', hint: 'community finance' },
-    { title: 'Contributions', description: `Contribute tokens to your group. Total contributed: ${totalContributions.toLocaleString()} UGX.`, icon: Wallet, href: '/contributions', cta: 'Make Contribution', img: 'https://placehold.co/600x400.png', hint: 'digital currency' },
-    { title: 'Smart Loans', description: `Access automated micro-loans. ${numActiveLoans} loans currently active.`, icon: Repeat, href: '/loans', cta: 'Apply for Loan', img: 'https://placehold.co/600x400.png', hint: 'loan agreement' },
-    { title: 'Transparent Records', description: `View all ${numTotalTransactions} immutable transactions on the ledger.`, icon: History, href: '/records', cta: 'See Ledger', img: 'https://placehold.co/600x400.png', hint: 'transaction history' },
-    { title: 'Member Verification', description: 'Secure your identity with mobile KYC. Complete your verification to enhance trust.', icon: UserCheck, href: '/verify', cta: 'Verify Now', img: 'https://placehold.co/600x400.png', hint: 'identity security' },
-    { title: 'Credit Reputation', description: 'Check your AI-powered credit score based on your SACCO activity.', icon: Gauge, href: '/credit-score', cta: 'Get Score', img: 'https://placehold.co/600x400.png', hint: 'financial score' },
+    { title: 'Group Wallets', description: `Access and manage ${isWalletDataLoading && userRole === 'member' ? '...' : numGroupWallets} collective savings group wallets.`, icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://loremflickr.com/600/400/community,finance', hint: 'community finance' },
+    { title: 'Contributions', description: `Contribute tokens to your group. Total contributed: ${totalContributions.toLocaleString()} UGX.`, icon: Wallet, href: '/contributions', cta: 'Make Contribution', img: 'https://loremflickr.com/600/400/currency,digital', hint: 'digital currency' },
+    { title: 'Smart Loans', description: `Access automated micro-loans. ${numActiveLoans} loans currently active.`, icon: Repeat, href: '/loans', cta: 'Apply for Loan', img: 'https://loremflickr.com/600/400/loan,agreement', hint: 'loan agreement' },
+    { title: 'Transparent Records', description: `View all ${numTotalTransactions} immutable transactions on the ledger.`, icon: History, href: '/records', cta: 'See Ledger', img: 'https://loremflickr.com/600/400/transaction,history', hint: 'transaction history' },
+    { title: 'Member Verification', description: 'Secure your identity with mobile KYC. Complete your verification to enhance trust.', icon: UserCheck, href: '/verify', cta: 'Verify Now', img: 'https://loremflickr.com/600/400/identity,security', hint: 'identity security' },
+    { title: 'Credit Reputation', description: 'Check your AI-powered credit score based on your SACCO activity.', icon: Gauge, href: '/credit-score', cta: 'Get Score', img: 'https://loremflickr.com/600/400/finance,score', hint: 'financial score' },
   ];
 
 
@@ -102,12 +102,12 @@ export default function DashboardPage() {
             </div>
             <div className="md:w-1/3 mt-6 md:mt-0 flex justify-center">
               <Image 
-                src="https://placehold.co/300x300.png" 
+                src="https://loremflickr.com/300/300/community,technology" 
                 alt="CoopLedger illustration" 
                 width={250} 
                 height={250} 
                 className="rounded-lg shadow-md"
-                data-ai-hint="community finance technology" 
+                data-ai-hint="community technology" 
               />
             </div>
           </div>

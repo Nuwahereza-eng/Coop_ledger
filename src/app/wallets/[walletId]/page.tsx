@@ -144,7 +144,7 @@ export default function WalletDetailPage() {
   }
 
   const displayMembers = wallet.members && wallet.members.length > 0 ? wallet.members : mockMembers.slice(0,3);
-  const displayTransactions = wallet.transactions ? [...wallet.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [];
+  const displayTransactions = wallet.transactions ? [...wallet.transactions].sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime()) : [];
 
   const creatorName = wallet.creatorId 
     ? (wallet.members?.find(m => m.id === wallet.creatorId)?.name || wallet.creatorId) 
@@ -178,12 +178,12 @@ export default function WalletDetailPage() {
           </CardHeader>
           <div className="w-full h-40 sm:h-60 overflow-hidden">
             <Image 
-              src={`https://placehold.co/1200x400.png`}
+              src={`https://loremflickr.com/1200/400/finance,group`}
               alt={`${wallet.name} banner`}
               width={1200}
               height={400}
               className="w-full h-full object-cover"
-              data-ai-hint="financial group banner"
+              data-ai-hint="financial group"
               priority
             />
           </div>
@@ -263,7 +263,7 @@ export default function WalletDetailPage() {
                       <li key={member.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
-                            <AvatarImage src={`https://placehold.co/40x40.png?text=${member.name.substring(0,1)}`} alt={member.name} data-ai-hint="profile avatar" />
+                            <AvatarImage src={`https://loremflickr.com/40/40/person,portrait`} alt={member.name} data-ai-hint="profile portrait" />
                             <AvatarFallback>{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <span className="text-sm sm:text-base">{member.name}</span>
