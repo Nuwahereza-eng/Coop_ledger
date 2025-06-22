@@ -61,12 +61,12 @@ export default function DashboardPage() {
   const numTotalTransactions = mockTransactions.length;
 
   const memberFeatures = [
-    { title: 'Group Wallets', description: `Access and manage ${isWalletDataLoading && userRole === 'member' ? '...' : numGroupWallets} collective savings group wallets.`, icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://loremflickr.com/600/400/community,finance', hint: 'community finance' },
-    { title: 'Contributions', description: `Contribute tokens to your group. Total contributed: ${totalContributions.toLocaleString()} UGX.`, icon: Wallet, href: '/contributions', cta: 'Make Contribution', img: 'https://loremflickr.com/600/400/currency,digital', hint: 'digital currency' },
-    { title: 'Smart Loans', description: `Access automated micro-loans. ${numActiveLoans} loans currently active.`, icon: Repeat, href: '/loans', cta: 'Apply for Loan', img: 'https://loremflickr.com/600/400/loan,agreement', hint: 'loan agreement' },
-    { title: 'Transparent Records', description: `View all ${numTotalTransactions} immutable transactions on the ledger.`, icon: History, href: '/records', cta: 'See Ledger', img: 'https://loremflickr.com/600/400/transaction,history', hint: 'transaction history' },
-    { title: 'Member Verification', description: 'Secure your identity with mobile KYC. Complete your verification to enhance trust.', icon: UserCheck, href: '/verify', cta: 'Verify Now', img: 'https://loremflickr.com/600/400/identity,security', hint: 'identity security' },
-    { title: 'Credit Reputation', description: 'Check your AI-powered credit score based on your SACCO activity.', icon: Gauge, href: '/credit-score', cta: 'Get Score', img: 'https://loremflickr.com/600/400/finance,score', hint: 'financial score' },
+    { title: 'Group Wallets', description: `Access and manage ${isWalletDataLoading && userRole === 'member' ? '...' : numGroupWallets} collective savings group wallets.`, icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'community finance' },
+    { title: 'Contributions', description: `Contribute tokens to your group. Total contributed: ${totalContributions.toLocaleString()} UGX.`, icon: Wallet, href: '/contributions', cta: 'Make Contribution', img: 'https://images.unsplash.com/photo-1637597384601-61e937e8bc15?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'digital currency' },
+    { title: 'Smart Loans', description: `Access automated micro-loans. ${numActiveLoans} loans currently active.`, icon: Repeat, href: '/loans', cta: 'Apply for Loan', img: 'https://plus.unsplash.com/premium_photo-1677265809324-4cc68b8cc4e7?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'loan agreement' },
+    { title: 'Transparent Records', description: `View all ${numTotalTransactions} immutable transactions on the ledger.`, icon: History, href: '/records', cta: 'See Ledger', img: 'https://plus.unsplash.com/premium_photo-1682125773446-259ce64f9dd7?q=80&w=2071&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'transaction history' },
+    { title: 'Member Verification', description: 'Secure your identity with mobile KYC. Complete your verification to enhance trust.', icon: UserCheck, href: '/verify', cta: 'Verify Now', img: 'https://plus.unsplash.com/premium_photo-1677093906217-9420a5f16322?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'identity security' },
+    { title: 'Credit Reputation', description: 'Check your AI-powered credit score based on your SACCO activity.', icon: Gauge, href: '/credit-score', cta: 'Get Score', img: 'https://plus.unsplash.com/premium_photo-1676837121480-ff39800ebfc7?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'financial score' },
   ];
 
 
@@ -102,7 +102,7 @@ export default function DashboardPage() {
             </div>
             <div className="md:w-1/3 mt-6 md:mt-0 flex justify-center">
               <Image 
-                src="https://loremflickr.com/300/300/community,technology" 
+                src="https://images.unsplash.com/photo-1652020503800-0ed3e0021746?q=80&w=1240&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
                 alt="CoopLedger illustration" 
                 width={250} 
                 height={250} 
