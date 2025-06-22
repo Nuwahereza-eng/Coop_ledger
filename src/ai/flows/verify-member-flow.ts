@@ -11,7 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const VerifyMemberInputSchema = z.object({
+const VerifyMemberInputSchema = z.object({
   idFrontDataUri: z.string().describe("A data URI of the front of the user's ID document. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
   idBackDataUri: z.string().describe("A data URI of the back of the user's ID document. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
   livenessPhotoDataUri: z.string().describe("A data URI of the user's selfie for liveness check. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
@@ -19,7 +19,7 @@ export const VerifyMemberInputSchema = z.object({
 });
 export type VerifyMemberInput = z.infer<typeof VerifyMemberInputSchema>;
 
-export const VerifyMemberOutputSchema = z.object({
+const VerifyMemberOutputSchema = z.object({
   isVerified: z.boolean().describe('Whether the identity verification was successful.'),
   reasoning: z
     .string()
