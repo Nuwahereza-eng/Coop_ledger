@@ -19,12 +19,12 @@ const getTransactionIcon = (type: Transaction['type']) => {
   if (type === 'wallet_creation') return <Landmark className="h-5 w-5 text-indigo-500" />;
   if (type === 'member_join') return <UserPlus className="h-5 w-5 text-cyan-500" />;
   if (type === 'personal_deposit') return <ArrowUpCircle className="h-5 w-5 text-teal-500" />;
-  if (type === 'personal_withdrawal') return <ArrowDownCircle className="h-5 w-5 text-orange-500" />;
+  if (type === 'personal_withdrawal' || type === 'group_withdrawal') return <ArrowDownCircle className="h-5 w-5 text-orange-500" />;
   return <FileText className="h-5 w-5 text-gray-500" />;
 };
 
 const getTransactionColorClass = (amount: number, type: Transaction['type']) => {
-    if (type === 'loan_disbursement' || type === 'personal_withdrawal' || (amount < 0 && type !== 'contribution')) return 'text-red-600 dark:text-red-400';
+    if (type === 'loan_disbursement' || type === 'personal_withdrawal' || type === 'group_withdrawal' || (amount < 0 && type !== 'contribution')) return 'text-red-600 dark:text-red-400';
     if (amount > 0) return 'text-green-600 dark:text-green-400';
     return 'text-muted-foreground';
 };
@@ -66,7 +66,7 @@ export function TransactionListItem({ transaction }: TransactionListItemProps) {
               transaction.type === 'loan_repayment' ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-800/30 dark:text-blue-300 dark:border-blue-700' :
               transaction.type === 'member_join' ? 'bg-cyan-100 text-cyan-700 border-cyan-300 dark:bg-cyan-800/30 dark:text-cyan-300 dark:border-cyan-700' :
               transaction.type === 'personal_deposit' ? 'bg-teal-100 text-teal-700 border-teal-300 dark:bg-teal-800/30 dark:text-teal-300 dark:border-teal-700' :
-              transaction.type === 'personal_withdrawal' ? 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-800/30 dark:text-orange-300 dark:border-orange-700' :
+              transaction.type === 'personal_withdrawal' || transaction.type === 'group_withdrawal' ? 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-800/30 dark:text-orange-300 dark:border-orange-700' :
               'bg-muted text-muted-foreground border-border'
             )}>
               {transaction.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}

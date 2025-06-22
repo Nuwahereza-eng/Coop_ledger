@@ -62,7 +62,7 @@ export default function SystemLogsPage() {
     .filter(tx => tx.description.toLowerCase().includes(searchTerm.toLowerCase()) || tx.id.includes(searchTerm))
     .sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
 
-  const transactionTypes: Array<TransactionType | 'all'> = ['all', 'contribution', 'loan_disbursement', 'loan_repayment', 'interest_accrual', 'wallet_creation', 'member_join', 'personal_deposit', 'personal_withdrawal'];
+  const transactionTypes: Array<TransactionType | 'all'> = ['all', 'contribution', 'loan_disbursement', 'loan_repayment', 'interest_accrual', 'wallet_creation', 'member_join', 'personal_deposit', 'personal_withdrawal', 'group_withdrawal'];
 
 
   if (!isRoleInitialized || userRole !== 'admin') {

@@ -59,7 +59,20 @@ export interface Repayment {
   status: 'pending' | 'paid' | 'overdue';
 }
 
-export type TransactionType = 'contribution' | 'loan_disbursement' | 'loan_repayment' | 'interest_accrual' | 'wallet_creation' | 'member_join' | 'personal_deposit' | 'personal_withdrawal';
+export interface WithdrawalProposal {
+  id: string;
+  walletId: string;
+  creatorId: string; // The member who proposed the withdrawal
+  amount: number;
+  reason: string;
+  status: 'voting_in_progress' | 'approved' | 'rejected' | 'executed' | 'failed';
+  requestDate: string | Timestamp;
+  votesFor: string[];
+  votesAgainst: string[];
+  voters: string[];
+}
+
+export type TransactionType = 'contribution' | 'loan_disbursement' | 'loan_repayment' | 'interest_accrual' | 'wallet_creation' | 'member_join' | 'personal_deposit' | 'personal_withdrawal' | 'group_withdrawal';
 
 export interface Transaction {
   id: string;
@@ -73,4 +86,5 @@ export interface Transaction {
   previousHash?: string;
   relatedLoanId?: string;
   relatedContributionId?: string;
+  relatedWithdrawalProposalId?: string;
 }
