@@ -10,9 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { UserCheck, ShieldCheck, Info, Loader2, Camera, UploadCloud, FileImage } from 'lucide-react';
+import { UserCheck, ShieldCheck, Info, Loader2, Camera, UploadCloud, FileImage, Bot } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { verifyMember, type VerifyMemberOutput } from '@/ai/flows/verify-member-flow';
+import { useUser } from '@/contexts/UserContext';
 
 const verificationSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters.' }).max(100, {message: "Name too long."}),
@@ -32,9 +34,10 @@ async function sha256(message: string): Promise<string> {
 
 export function VerificationForm() {
   const { toast } = useToast();
+  const { currentUser, updateCurrentUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [hashedPii, setHashedPii] = useState<string | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'pending' | 'verified' | 'error'>('idle');
+  const [verificationResult, setVerificationResult] = useState<VerifyMemberOutput | null>(null);
   
   const [idFront, setIdFront] = useState<File | null>(null);
   const [idBack, setIdBack] = useState<File | null>(null);
@@ -88,6 +91,15 @@ export function VerificationForm() {
     }
   };
 
+  const fileToDataUri = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+  };
+
   const form = useForm<VerificationFormData>({
     resolver: zodResolver(verificationSchema),
     defaultValues: { fullName: '', nationalId: '', phoneNumber: '' },
@@ -105,28 +117,49 @@ export function VerificationForm() {
     
     setIsLoading(true);
     setHashedPii(null);
-    setVerificationStatus('pending');
+    setVerificationResult(null);
 
     try {
       const piiString = `${data.fullName.trim().toLowerCase()}|${data.nationalId.trim()}|${data.phoneNumber.trim()}`;
       const hash = await sha256(piiString);
       setHashedPii(hash);
       
-      console.log('Submitting PII hash for verification:', hash);
-      console.log('Simulating upload of ID front:', idFront.name);
-      console.log('Simulating upload of ID back:', idBack.name);
-      console.log('Simulating upload of liveness photo, data length:', livenessPhoto.length);
+      const [idFrontDataUri, idBackDataUri] = await Promise.all([
+          fileToDataUri(idFront),
+          fileToDataUri(idBack),
+      ]);
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      setVerificationStatus('verified');
-      toast({
-        title: 'Verification Submitted Successfully',
-        description: 'Your information is now pending review by an administrator.',
+      const result = await verifyMember({
+          idFrontDataUri,
+          idBackDataUri,
+          livenessPhotoDataUri: livenessPhoto,
+          piiHash: hash,
       });
+
+      setVerificationResult(result);
+
+      if (result.isVerified) {
+          toast({
+              title: 'Verification Successful!',
+              description: result.reasoning,
+          });
+          if (currentUser) {
+              updateCurrentUser({ verificationStatus: 'verified', hashedPii: hash });
+          }
+      } else {
+          toast({
+              title: 'Verification Rejected',
+              description: result.reasoning,
+              variant: 'destructive',
+          });
+          if (currentUser) {
+              updateCurrentUser({ verificationStatus: 'unverified' }); 
+          }
+      }
     } catch (error) {
-      console.error("Hashing or submission error:", error);
-      setVerificationStatus('error');
+      console.error("Verification process error:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+      setVerificationResult({ isVerified: false, reasoning: `An internal error occurred during verification. ${errorMessage}` });
       toast({
         title: 'Verification Failed',
         description: 'Could not process your verification request. Please try again.',
@@ -158,7 +191,6 @@ export function VerificationForm() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             
-            {/* Step 1: Personal Info */}
             <div className="space-y-4">
               <h3 className="font-semibold text-lg text-foreground">Step 1: Personal Information</h3>
               <FormField control={form.control} name="fullName" render={({ field }) => (
@@ -186,7 +218,6 @@ export function VerificationForm() {
 
             <Separator />
             
-            {/* Step 2: ID Upload */}
             <div className="space-y-4">
                 <h3 className="font-semibold text-lg text-foreground">Step 2: ID Document Upload</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -205,7 +236,6 @@ export function VerificationForm() {
 
             <Separator />
 
-            {/* Step 3: Liveness Check */}
             <div className="space-y-4">
                 <h3 className="font-semibold text-lg text-foreground">Step 3: Liveness Check</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
@@ -240,25 +270,31 @@ export function VerificationForm() {
             
             <Separator />
             
-            <Button type="submit" className="w-full text-lg py-6" disabled={isLoading || verificationStatus === 'verified'}>
-              {isLoading && <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting Verification...</>}
-              {!isLoading && verificationStatus === 'verified' && <><ShieldCheck className="mr-2"/> Submitted for Review</>}
-              {!isLoading && verificationStatus !== 'verified' && 'Verify My Identity'}
+            <Button type="submit" className="w-full text-lg py-6" disabled={isLoading || verificationResult?.isVerified}>
+              {isLoading && <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying with AI...</>}
+              {!isLoading && verificationResult?.isVerified && <><ShieldCheck className="mr-2"/> Successfully Verified</>}
+              {!isLoading && !verificationResult?.isVerified && 'Submit for AI Verification'}
             </Button>
           </form>
         </Form>
       </CardContent>
-      {(hashedPii || verificationStatus !== 'idle') && (
+      {verificationResult && !isLoading && (
         <CardFooter className="flex-col items-start space-y-2 pt-4 p-6 border-t">
-          {verificationStatus === 'pending' && <p className="text-sm text-muted-foreground">Generating secure hash and submitting...</p>}
+          <Alert variant={verificationResult.isVerified ? 'default' : 'destructive'} className={verificationResult.isVerified ? "border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-500/50" : ""}>
+              <Bot className="h-5 w-5" />
+              <AlertTitle className="font-semibold">
+                  {verificationResult.isVerified ? 'Verification Approved' : 'Verification Rejected'}
+              </AlertTitle>
+              <AlertDescription className="text-sm">
+                  <strong>AI Reasoning:</strong> {verificationResult.reasoning}
+              </AlertDescription>
+          </Alert>
           {hashedPii && (
-            <>
+            <div className="pt-2 w-full">
               <p className="text-sm font-medium text-foreground">Generated PII Hash (for demo):</p>
               <pre className="text-xs bg-muted p-2 rounded-md overflow-x-auto w-full text-muted-foreground">{hashedPii}</pre>
-            </>
+            </div>
           )}
-          {verificationStatus === 'verified' && <p className="text-sm text-green-600 font-semibold">Verification request sent successfully!</p>}
-          {verificationStatus === 'error' && <p className="text-sm text-red-600 font-semibold">An error occurred during verification.</p>}
         </CardFooter>
       )}
     </Card>
