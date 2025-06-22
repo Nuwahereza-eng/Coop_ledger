@@ -64,16 +64,9 @@ const verifyMemberFlow = ai.defineFlow(
     outputSchema: VerifyMemberOutputSchema,
   },
   async (input) => {
-    try {
-      const { output } = await prompt(input);
-      return output!;
-    } catch (e) {
-        console.error("[verifyMemberFlow] Error during AI verification:", e);
-        return {
-            isVerified: false,
-            reasoning: "The AI verification service failed to process the request. This could be due to an issue with the provided images or a temporary service outage.",
-            error: e instanceof Error ? e.message : "An unknown error occurred.",
-        }
-    }
+    // Let errors propagate to the calling client component, which already has a try/catch.
+    // This avoids confusing the Next.js server action compiler with a direct object return in a catch block.
+    const { output } = await prompt(input);
+    return output!;
   }
 );
