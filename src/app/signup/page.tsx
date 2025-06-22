@@ -10,18 +10,21 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Landmark, Loader2, Eye, EyeOff } from 'lucide-react';
+import type { Member } from '@/types';
 import Link from 'next/link';
 
-export default function LoginPage() {
-  const { users, setCurrentUser } = useUser();
+export default function SignupPage() {
+  const { users, addUser, setCurrentUser } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -36,40 +39,59 @@ export default function LoginPage() {
         setIsLoading(false);
         return;
     }
+    
+    if (firstName.trim().length < 2 || lastName.trim().length < 2) {
+        toast({
+            title: 'Invalid Name',
+            description: 'First and last names must be at least 2 characters long.',
+            variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+    }
 
     const foundUser = users.find(u => u.phoneNumber === phoneNumber);
-
+    
     setTimeout(() => {
-      if (!foundUser) {
-        toast({
-          title: 'Login Failed',
-          description: 'No account found with this phone number. Please sign up.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
+        if (foundUser) {
+            toast({
+                title: 'Account Exists',
+                description: 'This phone number is already registered. Please log in.',
+                variant: 'destructive',
+            });
+            setIsLoading(false);
+            return;
+        }
 
-      if (password !== DEMO_PASSWORD) {
-        toast({
-          title: 'Login Failed',
-          description: 'Invalid password. Please try again.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
+        if (password !== DEMO_PASSWORD) {
+            toast({
+                title: 'Invalid Password',
+                description: 'For this demo, please use the password "password2025".',
+                variant: 'destructive',
+            });
+            setIsLoading(false);
+            return;
+        }
 
-      setCurrentUser(foundUser);
-      toast({
-        title: `Welcome back, ${foundUser.name}!`,
-        description: `You are logged in as a ${foundUser.role}.`,
-      });
-      if (foundUser.role === 'admin') {
-        router.push('/admin/dashboard');
-      } else {
+        const newUserName = `${firstName.trim()} ${lastName.trim()}`;
+        const newUser: Member = {
+            id: `user-${new Date().getTime()}`,
+            name: newUserName,
+            phoneNumber: phoneNumber,
+            role: 'member',
+            verificationStatus: 'unverified',
+            personalWalletBalance: 0,
+            creditScore: 0,
+        };
+        
+        addUser(newUser);
+        setCurrentUser(newUser);
+
+        toast({
+          title: 'Account Created!',
+          description: `Welcome, ${newUserName}! Your new account is ready.`,
+        });
         router.push('/');
-      }
     }, 1000);
   };
 
@@ -81,11 +103,35 @@ export default function LoginPage() {
        </div>
       <Card className="w-full max-w-sm shadow-2xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
-          <CardDescription>Enter your phone number and password to log in.</CardDescription>
+          <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
+          <CardDescription>Join CoopLedger to start saving and borrowing with your community.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSignUp} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="John"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                />
+                </div>
+                <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Doe"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                />
+                </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="phoneNumber">Phone Number</Label>
               <Input
@@ -119,13 +165,13 @@ export default function LoginPage() {
               </div>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Log In'}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign Up'}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Link href="/signup" className="underline font-medium text-primary">
-              Sign up
+            Already have an account?{' '}
+            <Link href="/login" className="underline font-medium text-primary">
+              Log in
             </Link>
           </p>
         </CardContent>
