@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -16,12 +16,11 @@ import { useToast } from '@/hooks/use-toast';
 import { getWallets } from '@/services/walletService';
 import { createLoan } from '@/services/loanService';
 import type { GroupWallet } from '@/types';
-import { Repeat, Loader2, Sparkles, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Repeat, Loader2, ShieldCheck, ShieldAlert, Vote } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import { useRole } from '@/contexts/RoleContext';
-import { calculateLoanLimit, type CalculateLoanLimitOutput } from '@/ai/flows/calculate-loan-limit';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const loanRequestSchema = z.object({
@@ -36,29 +35,15 @@ export function LoanRequestForm() {
   const { toast } = useToast();
   const router = useRouter();
   const { currentUser } = useUser();
-  const { userRole } = useRole(); // Get user role
+  const { userRole } = useRole();
   const [isLoading, setIsLoading] = useState(false);
   const [wallets, setWallets] = useState<GroupWallet[]>([]);
   const [isFetchingWallets, setIsFetchingWallets] = useState(true);
-  
-  const [isCalculatingLimit, setIsCalculatingLimit] = useState(false);
-  const [limitResult, setLimitResult] = useState<CalculateLoanLimitOutput | null>(null);
 
   const isVerified = currentUser?.verificationStatus === 'verified';
 
   const form = useForm<z.infer<typeof loanRequestSchema>>({
-    resolver: zodResolver(loanRequestSchema.refine(
-      (data) => {
-        if (limitResult && data.amount > limitResult.loanLimit) {
-          return false;
-        }
-        return true;
-      },
-      {
-        message: "Amount cannot exceed your calculated loan limit.",
-        path: ["amount"],
-      }
-    )),
+    resolver: zodResolver(loanRequestSchema),
     defaultValues: {
       walletId: '',
       amount: 0,
@@ -68,14 +53,15 @@ export function LoanRequestForm() {
     },
   });
 
-  const selectedWalletId = form.watch('walletId');
-
   useEffect(() => {
     async function fetchWallets() {
+      if (!currentUser) return;
       try {
         setIsFetchingWallets(true);
-        const fetchedWallets = await getWallets();
-        setWallets(fetchedWallets);
+        const allWallets = await getWallets();
+        // Filter for wallets the user is a member of
+        const memberWallets = allWallets.filter(w => w.members.some(m => m.id === currentUser.id));
+        setWallets(memberWallets);
       } catch (error) {
         toast({
           title: "Error fetching wallets",
@@ -87,33 +73,11 @@ export function LoanRequestForm() {
       }
     }
     fetchWallets();
-  }, [toast]);
-  
-  const handleCalculateLimit = useCallback(async () => {
-    if (!currentUser) return;
-    
-    setIsCalculatingLimit(true);
-    setLimitResult(null);
-    try {
-      const result = await calculateLoanLimit({ memberId: currentUser.id });
-      setLimitResult(result);
-      form.setValue('amount', Math.min(form.getValues('amount'), result.loanLimit));
-      toast({
-        title: "Loan Limit Calculated",
-        description: `Your loan limit is ${result.loanLimit.toLocaleString()}.`,
-      });
-    } catch(error) {
-      console.error("Error calculating loan limit:", error);
-      toast({ title: "Could not calculate loan limit", variant: "destructive"});
-    } finally {
-      setIsCalculatingLimit(false);
-    }
-  }, [currentUser, toast, form]);
-
+  }, [toast, currentUser]);
 
   async function onSubmit(data: z.infer<typeof loanRequestSchema>) {
     if (!currentUser || !isVerified) {
-        toast({ title: "Action not allowed", description: "You must be a verified member to request a loan.", variant: "destructive"});
+        toast({ title: "Action not allowed", description: "You must be a verified member to propose a loan.", variant: "destructive"});
         return;
     }
     setIsLoading(true);
@@ -126,17 +90,17 @@ export function LoanRequestForm() {
 
       const targetWallet = wallets.find(w => w.id === data.walletId);
       toast({
-        title: 'Loan Request Submitted',
-        description: `Your loan request (ID: ${newLoanId.substring(0,6)}...) from "${targetWallet?.name}" has been submitted for approval.`,
+        title: 'Loan Proposal Submitted!',
+        description: `Your loan proposal (ID: ${newLoanId.substring(0,6)}...) has been submitted to the members of "${targetWallet?.name}" for voting.`,
       });
       form.reset();
       router.push('/loans');
 
     } catch (error) {
-      console.error("Failed to create loan request:", error);
+      console.error("Failed to create loan proposal:", error);
       toast({
-        title: "Loan Request Failed",
-        description: "There was an error submitting your request.",
+        title: "Proposal Submission Failed",
+        description: "There was an error submitting your proposal.",
         variant: "destructive",
       });
     } finally {
@@ -149,14 +113,14 @@ export function LoanRequestForm() {
         <Card className="w-full max-w-lg mx-auto">
              <CardHeader className="text-center p-6">
                 <div className="inline-flex justify-center items-center p-3 bg-primary/10 rounded-full mb-3 mx-auto w-fit">
-                    <Repeat className="h-10 w-10 text-primary" />
+                    <Vote className="h-10 w-10 text-primary" />
                 </div>
-                <CardTitle className="font-headline text-2xl">Request a Loan</CardTitle>
+                <CardTitle className="font-headline text-2xl">Submit a Loan Proposal</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
                 <div className="flex justify-center items-center h-60">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="ml-4 text-muted-foreground">Loading wallets...</p>
+                    <p className="ml-4 text-muted-foreground">Loading your wallets...</p>
                 </div>
             </CardContent>
         </Card>
@@ -167,10 +131,10 @@ export function LoanRequestForm() {
     <Card className="w-full max-w-lg mx-auto shadow-lg">
        <CardHeader className="text-center p-6">
         <div className="inline-flex justify-center items-center p-3 bg-primary/10 rounded-full mb-3 mx-auto w-fit">
-            <Repeat className="h-10 w-10 text-primary" />
+            <Vote className="h-10 w-10 text-primary" />
         </div>
-        <CardTitle className="font-headline text-2xl text-foreground">Request a Loan</CardTitle>
-        <CardDescription>Apply for a micro-loan from your group wallet.</CardDescription>
+        <CardTitle className="font-headline text-2xl text-foreground">Submit a Loan Proposal</CardTitle>
+        <CardDescription>Propose a loan to your group. It will be approved by member vote.</CardDescription>
       </CardHeader>
       <CardContent className="p-6">
         {!isVerified && (
@@ -178,7 +142,7 @@ export function LoanRequestForm() {
             <ShieldAlert className="h-4 w-4" />
             <AlertTitle>Verification Required</AlertTitle>
             <AlertDescription>
-              You must be a verified member to apply for a loan. Please{' '}
+              You must be a verified member to propose a loan. Please{' '}
               <Link href="/verify" className="underline font-semibold">complete your verification</Link>.
             </AlertDescription>
           </Alert>
@@ -190,11 +154,11 @@ export function LoanRequestForm() {
               name="walletId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Request From Wallet</FormLabel>
+                  <FormLabel>Propose to Wallet</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isVerified}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose a wallet" />
+                        <SelectValue placeholder="Choose a wallet you are a member of" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -205,7 +169,7 @@ export function LoanRequestForm() {
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="none" disabled>No wallets found. Create a wallet first.</SelectItem>
+                        <SelectItem value="none" disabled>You are not a member of any wallets.</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -214,28 +178,6 @@ export function LoanRequestForm() {
               )}
             />
 
-            <Card className="bg-muted/50 p-4">
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div>
-                        <Label className="font-semibold text-foreground">Loan Limit Check</Label>
-                        <p className="text-xs text-muted-foreground">Let our AI determine your borrowing power.</p>
-                    </div>
-                    <Button type="button" onClick={handleCalculateLimit} disabled={isCalculatingLimit || !currentUser || !isVerified}>
-                        {isCalculatingLimit ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
-                        {isCalculatingLimit ? 'Calculating...' : 'Calculate My Limit'}
-                    </Button>
-                </div>
-                {limitResult && (
-                    <Alert className="mt-4 bg-background">
-                        <ShieldCheck className="h-4 w-4 text-primary" />
-                        <AlertTitle className="font-bold text-primary">
-                            Your Loan Limit is: {limitResult.loanLimit.toLocaleString()} {wallets.find(w => w.id === selectedWalletId)?.tokenType}
-                        </AlertTitle>
-                        <AlertDescription className="text-xs mt-1">{limitResult.reasoning}</AlertDescription>
-                    </Alert>
-                )}
-            </Card>
-
             <FormField
               control={form.control}
               name="amount"
@@ -243,7 +185,7 @@ export function LoanRequestForm() {
                 <FormItem>
                   <FormLabel>Loan Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="Enter desired amount" {...field} disabled={!limitResult || !isVerified} />
+                    <Input type="number" placeholder="Enter desired amount" {...field} disabled={!isVerified} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -280,7 +222,7 @@ export function LoanRequestForm() {
                     />
                   </FormControl>
                   {userRole !== 'admin' && (
-                    <p className="text-xs text-muted-foreground">Interest rate is set by the admin.</p>
+                    <p className="text-xs text-muted-foreground">Interest rate is set by group policy (defaulted).</p>
                   )}
                   <FormMessage />
                 </FormItem>
@@ -301,8 +243,8 @@ export function LoanRequestForm() {
               )}
             />
             
-            <Button type="submit" className="w-full" disabled={isLoading || wallets.length === 0 || !currentUser || !limitResult || !isVerified}>
-              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting Request...</> : 'Request Loan'}
+            <Button type="submit" className="w-full" disabled={isLoading || wallets.length === 0 || !currentUser || !isVerified}>
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting Proposal...</> : 'Submit Proposal for Voting'}
             </Button>
           </form>
         </Form>

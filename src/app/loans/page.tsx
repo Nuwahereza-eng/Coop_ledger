@@ -7,7 +7,7 @@ import AppLayout from '../AppLayout';
 import { Button } from '@/components/ui/button';
 import { LoanListItem } from '@/components/features/loans/LoanListItem';
 import type { Loan } from '@/types';
-import { PlusCircle, Repeat, Loader2, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Vote, Loader2, AlertTriangle } from 'lucide-react';
 import { getLoans } from '@/services/loanService';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -38,12 +38,12 @@ export default function LoansPage() {
       <div className="space-y-8">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <Repeat className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline text-foreground">My Loans</h1>
+            <Vote className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline text-foreground">My Loan Proposals</h1>
           </div>
           <Button asChild>
             <Link href="/loans/request">
-              <PlusCircle className="mr-2 h-5 w-5" /> Request New Loan
+              <PlusCircle className="mr-2 h-5 w-5" /> Propose New Loan
             </Link>
           </Button>
         </div>
@@ -51,7 +51,7 @@ export default function LoansPage() {
         {isLoading && (
           <div className="flex justify-center items-center py-12">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="ml-4 text-muted-foreground">Loading loans...</p>
+            <p className="ml-4 text-muted-foreground">Loading loan proposals...</p>
           </div>
         )}
 
@@ -75,9 +75,9 @@ export default function LoansPage() {
 
         {!isLoading && !error && loans.length === 0 && (
           <div className="text-center py-12 bg-card rounded-lg shadow">
-            <Repeat className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <p className="text-xl text-muted-foreground">No loans found.</p>
-            <p className="mt-2 text-sm text-muted-foreground">You can request a new loan if you are part of a group wallet.</p>
+            <Vote className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <p className="text-xl text-muted-foreground">No loan proposals found.</p>
+            <p className="mt-2 text-sm text-muted-foreground">You can propose a new loan if you are part of a group wallet.</p>
           </div>
         )}
       </div>

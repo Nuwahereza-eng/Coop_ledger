@@ -39,11 +39,14 @@ export interface Loan {
   interestRate: number; // Annual percentage, e.g., 0.05 for 5%
   termMonths: number;
   purpose: string;
-  status: 'pending' | 'active' | 'repaid' | 'defaulted' | 'rejected';
+  status: 'pending' | 'active' | 'repaid' | 'defaulted' | 'rejected' | 'voting_in_progress';
   requestDate: string | Timestamp;
   approvalDate?: string | Timestamp;
   repaymentSchedule: Repayment[];
   totalRepaid: number;
+  votesFor: string[]; // Array of member IDs who voted for
+  votesAgainst: string[]; // Array of member IDs who voted against
+  voters: string[]; // Array of member IDs who have voted
 }
 
 export interface Repayment {

@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import AppLayout from '../../AppLayout';
-import { ListChecks, Loader2, AlertTriangle, Info } from 'lucide-react';
+import { Users, Loader2, AlertTriangle, Info, Vote } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
 import { useRouter } from 'next/navigation';
 import { getLoans } from '@/services/loanService';
@@ -18,7 +18,7 @@ export default function ApproveLoansPage() {
   const { userRole, isRoleInitialized } = useRole();
   const router = useRouter();
   
-  const [pendingLoans, setPendingLoans] = useState<Loan[]>([]);
+  const [votingLoans, setVotingLoans] = useState<Loan[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [wallets, setWallets] = useState<GroupWallet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,8 +33,8 @@ export default function ApproveLoansPage() {
         getUsers(),
         getWallets()
       ]);
-      const pending = allLoans.filter(loan => loan.status === 'pending');
-      setPendingLoans(pending);
+      const loansInVoting = allLoans.filter(loan => loan.status === 'voting_in_progress');
+      setVotingLoans(loansInVoting);
       setMembers(allMembers);
       setWallets(allWallets);
     } catch (err) {
@@ -63,7 +63,7 @@ export default function ApproveLoansPage() {
       <AppLayout>
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-4 text-muted-foreground">Loading pending loan applications...</p>
+          <p className="mt-4 text-muted-foreground">Loading loan proposals...</p>
         </div>
       </AppLayout>
     );
@@ -73,17 +73,17 @@ export default function ApproveLoansPage() {
     <AppLayout>
       <div className="space-y-8">
         <div className="flex items-center gap-3">
-          <ListChecks className="h-8 w-8 text-primary" />
+          <Vote className="h-8 w-8 text-primary" />
           <h1 className="text-2xl sm:text-3xl font-bold font-headline text-foreground">
-            Approve Loans
+            Loan Proposals
           </h1>
         </div>
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>Pending Loan Applications</CardTitle>
+            <CardTitle>Proposals Under Review</CardTitle>
             <CardDescription>
-              Review the details of each loan request and choose to approve or reject it.
+              Monitor active loan proposals being voted on by SACCO members. Decisions are made decentrally.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -94,16 +94,16 @@ export default function ApproveLoansPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            {!error && pendingLoans.length === 0 && (
+            {!error && votingLoans.length === 0 && (
               <Alert>
                 <Info className="h-4 w-4" />
-                <AlertTitle>No Pending Loans</AlertTitle>
-                <AlertDescription>There are currently no loan applications awaiting approval.</AlertDescription>
+                <AlertTitle>No Active Proposals</AlertTitle>
+                <AlertDescription>There are currently no loan proposals being voted on.</AlertDescription>
               </Alert>
             )}
-            {!error && pendingLoans.length > 0 && (
+            {!error && votingLoans.length > 0 && (
               <div className="space-y-4">
-                {pendingLoans.map(loan => {
+                {votingLoans.map(loan => {
                   const member = members.find(m => m.id === loan.memberId);
                   const wallet = wallets.find(w => w.id === loan.walletId);
                   return (

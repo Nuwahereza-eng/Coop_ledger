@@ -1,7 +1,7 @@
 
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, Timestamp, addDoc, updateDoc, runTransaction, arrayUnion } from 'firebase/firestore';
-import type { Loan, GroupWallet, Transaction, Repayment } from '@/types';
+import type { Loan, GroupWallet, Transaction, Repayment, Member } from '@/types';
 import { sha256, serializeTransactionForHashing, GENESIS_HASH } from '@/lib/crypto';
 
 
@@ -74,36 +74,42 @@ export async function getLoanById(id: string): Promise<Loan | null> {
   }
 }
 
-export type CreateLoanData = Omit<Loan, 'id' | 'status' | 'requestDate' | 'repaymentSchedule' | 'totalRepaid'>;
+export type CreateLoanData = Omit<Loan, 'id' | 'status' | 'requestDate' | 'repaymentSchedule' | 'totalRepaid' | 'votesFor' | 'votesAgainst' | 'voters'>;
 
 export async function createLoan(loanData: CreateLoanData): Promise<string> {
-    console.log('[LoanService] Attempting to create loan with data:', loanData);
+    console.log('[LoanService] Attempting to create loan proposal with data:', loanData);
 
     const newLoanDocData = {
       ...loanData,
-      status: 'pending',
+      status: 'voting_in_progress', // New status for DAO governance
       requestDate: Timestamp.now(),
       repaymentSchedule: [],
       totalRepaid: 0,
+      votesFor: [],
+      votesAgainst: [],
+      voters: [],
     };
 
     try {
         const docRef = await addDoc(collection(db, 'loans'), newLoanDocData);
-        console.log('[LoanService] Loan created successfully with ID:', docRef.id);
+        console.log('[LoanService] Loan proposal created successfully with ID:', docRef.id);
         return docRef.id;
     } catch (error) {
-        console.error("[LoanService] Error creating loan document in Firestore: ", error);
-        throw new Error(`Could not create loan request. Firestore error: ${error instanceof Error ? error.message : String(error)}`);
+        console.error("[LoanService] Error creating loan proposal document in Firestore: ", error);
+        throw new Error(`Could not create loan proposal. Firestore error: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
-export async function approveLoan(loanId: string): Promise<void> {
-  const loanRef = doc(db, 'loans', loanId);
-  
-  await runTransaction(db, async (firestoreTransaction) => {
+export async function approveLoan(loanId: string, transactionRunner: any): Promise<void> {
+    const loanRef = doc(db, 'loans', loanId);
+    
+    // This function will be called within another transaction, so we use the provided runner
+    const firestoreTransaction = transactionRunner;
+    
     const loanDoc = await firestoreTransaction.get(loanRef);
-    if (!loanDoc.exists() || loanDoc.data().status !== 'pending') {
-      throw new Error("Loan not found or not in pending state.");
+    // Check if loan exists, but don't check status, as it might be 'voting_in_progress'
+    if (!loanDoc.exists()) {
+      throw new Error("Loan not found during approval process.");
     }
     const loanData = loanDoc.data() as Loan;
     
@@ -115,7 +121,9 @@ export async function approveLoan(loanId: string): Promise<void> {
     const walletData = walletDoc.data() as GroupWallet;
 
     if (walletData.balance < loanData.amount) {
-      throw new Error("Insufficient funds in the wallet to disburse this loan.");
+      // If we are here, something is wrong, reject the loan instead
+      firestoreTransaction.update(loanRef, { status: 'rejected' });
+      throw new Error("Insufficient funds in the wallet to disburse this loan. Loan rejected.");
     }
     
     const currentTransactions = (walletData.transactions || []).map(t => convertLoanTimestampsToISO(t)) as (Transaction & {date: string})[];
@@ -127,7 +135,7 @@ export async function approveLoan(loanId: string): Promise<void> {
     const disbursementTransaction: Omit<Transaction, 'hash'> = {
         id: `txn-disburse-${new Date().getTime()}-${Math.random().toString(16).slice(2)}`,
         type: 'loan_disbursement',
-        amount: -loanData.amount, // It's a disbursement, so it's negative for the wallet
+        amount: -loanData.amount,
         date: Timestamp.now(),
         description: `Loan disbursement for: ${loanData.purpose}`,
         previousHash: previousHash,
@@ -143,7 +151,6 @@ export async function approveLoan(loanId: string): Promise<void> {
 
     // Generate Repayment Schedule
     const repaymentSchedule: Repayment[] = [];
-    // Assuming interestRate is a flat rate for the entire term for simplicity
     const totalRepayable = loanData.amount * (1 + loanData.interestRate);
     const installmentAmount = totalRepayable / loanData.termMonths;
     const approvalDate = new Date();
@@ -172,17 +179,74 @@ export async function approveLoan(loanId: string): Promise<void> {
       approvalDate: Timestamp.now(),
       repaymentSchedule: repaymentSchedule
     });
-  });
-   console.log(`[LoanService] Loan ${loanId} approved and disbursed successfully.`);
+   console.log(`[LoanService] Loan ${loanId} auto-approved and disbursed successfully.`);
 }
 
-export async function rejectLoan(loanId: string): Promise<void> {
+export async function rejectLoan(loanId: string, transactionRunner: any): Promise<void> {
     const loanRef = doc(db, 'loans', loanId);
-    await updateDoc(loanRef, {
+    await transactionRunner.update(loanRef, {
         status: 'rejected',
     });
-    console.log(`[LoanService] Loan ${loanId} rejected successfully.`);
+    console.log(`[LoanService] Loan ${loanId} auto-rejected successfully.`);
 }
+
+
+export async function castVoteOnLoan(loanId: string, memberId: string, vote: 'for' | 'against'): Promise<void> {
+  await runTransaction(db, async (firestoreTransaction) => {
+    const loanRef = doc(db, 'loans', loanId);
+    const loanDoc = await firestoreTransaction.get(loanRef);
+
+    if (!loanDoc.exists() || loanDoc.data().status !== 'voting_in_progress') {
+      throw new Error("This loan proposal is not currently in a voting phase.");
+    }
+    const loanData = loanDoc.data() as Loan;
+
+    const walletRef = doc(db, 'wallets', loanData.walletId);
+    const walletDoc = await firestoreTransaction.get(walletRef);
+    if (!walletDoc.exists()) {
+      throw new Error("Source wallet for the loan not found!");
+    }
+    const walletData = walletDoc.data() as GroupWallet;
+    const totalMembers = walletData.members.length;
+    const approvalThreshold = Math.floor(totalMembers / 2) + 1; // More than 50% must vote FOR
+
+    // Check if member is eligible to vote
+    if (!walletData.members.some(m => m.id === memberId)) {
+        throw new Error("You are not a member of the wallet this loan belongs to.");
+    }
+    if (loanData.voters.includes(memberId)) {
+        throw new Error("You have already voted on this proposal.");
+    }
+
+    // Record the vote
+    const updatedVoters = [...loanData.voters, memberId];
+    let updatedVotesFor = [...loanData.votesFor];
+    let updatedVotesAgainst = [...loanData.votesAgainst];
+
+    if (vote === 'for') {
+        updatedVotesFor.push(memberId);
+    } else {
+        updatedVotesAgainst.push(memberId);
+    }
+
+    firestoreTransaction.update(loanRef, {
+        voters: updatedVoters,
+        votesFor: updatedVotesFor,
+        votesAgainst: updatedVotesAgainst,
+    });
+    
+    // Check if the vote resolves the proposal
+    if (updatedVotesFor.length >= approvalThreshold) {
+        console.log(`[LoanService] Vote threshold met for loan ${loanId}. Approving...`);
+        await approveLoan(loanId, firestoreTransaction);
+    } else if (updatedVotesAgainst.length >= (totalMembers - approvalThreshold + 1)) {
+        // If it's mathematically impossible for the loan to be approved
+        console.log(`[LoanService] Vote threshold met for loan ${loanId}. Rejecting...`);
+        await rejectLoan(loanId, firestoreTransaction);
+    }
+  });
+}
+
 
 
 export async function processLoanRepayment(loanId: string, repaymentAmount: number, memberId: string): Promise<void> {
@@ -200,7 +264,6 @@ export async function processLoanRepayment(loanId: string, repaymentAmount: numb
     const totalAmountDue = loanData.amount * (1 + loanData.interestRate);
     const remainingBalance = totalAmountDue - (loanData.totalRepaid || 0);
 
-    // Using a small epsilon for floating point comparison to prevent minor issues
     if (repaymentAmount > remainingBalance + 0.01) {
         throw new Error(`Repayment amount of ${repaymentAmount.toLocaleString()} exceeds the remaining balance of ${remainingBalance.toLocaleString()}.`);
     }
@@ -243,8 +306,8 @@ export async function processLoanRepayment(loanId: string, repaymentAmount: numb
     // 4. Update Loan
     const newTotalRepaid = (loanData.totalRepaid || 0) + repaymentAmount;
     let amountToApply = repaymentAmount;
-    const updatedSchedule = loanData.repaymentSchedule.map((repayment: Repayment) => {
-        const updatedRepayment = { ...repayment }; // Work with a copy
+    const updatedSchedule = loanData.repaymentSchedule.map((repayment: any) => {
+        const updatedRepayment = { ...convertLoanTimestampsToISO(repayment) };
         if (updatedRepayment.status !== 'paid' && amountToApply > 0) {
             const remainingDue = updatedRepayment.amountDue - (updatedRepayment.amountPaid || 0);
             const paymentForThisInstallment = Math.min(amountToApply, remainingDue);
@@ -252,12 +315,15 @@ export async function processLoanRepayment(loanId: string, repaymentAmount: numb
             updatedRepayment.amountPaid = (updatedRepayment.amountPaid || 0) + paymentForThisInstallment;
             amountToApply -= paymentForThisInstallment;
 
-            // Use a small epsilon for float comparison to be safe
             if (updatedRepayment.amountPaid >= (updatedRepayment.amountDue - 0.001)) {
                 updatedRepayment.status = 'paid';
                 updatedRepayment.paymentDate = Timestamp.now();
             }
         }
+        // Convert ISO strings back to Timestamps before updating Firestore
+        if (updatedRepayment.dueDate) updatedRepayment.dueDate = Timestamp.fromDate(new Date(updatedRepayment.dueDate));
+        if (updatedRepayment.paymentDate) updatedRepayment.paymentDate = Timestamp.fromDate(new Date(updatedRepayment.paymentDate));
+
         return updatedRepayment;
     });
     
