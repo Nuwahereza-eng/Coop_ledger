@@ -214,14 +214,14 @@ export async function castVoteOnLoan(loanId: string, memberId: string, vote: 'fo
     if (!walletData.members.some(m => m.id === memberId)) {
         throw new Error("You are not a member of the wallet this loan belongs to.");
     }
-    if (loanData.voters.includes(memberId)) {
+    if ((loanData.voters || []).includes(memberId)) {
         throw new Error("You have already voted on this proposal.");
     }
 
     // Record the vote
-    const updatedVoters = [...loanData.voters, memberId];
-    let updatedVotesFor = [...loanData.votesFor];
-    let updatedVotesAgainst = [...loanData.votesAgainst];
+    const updatedVoters = [...(loanData.voters || []), memberId];
+    let updatedVotesFor = [...(loanData.votesFor || [])];
+    let updatedVotesAgainst = [...(loanData.votesAgainst || [])];
 
     if (vote === 'for') {
         updatedVotesFor.push(memberId);

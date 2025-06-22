@@ -3,7 +3,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '../../AppLayout';
-import { getLoanById, castVoteOnLoan } from '@/services/loanService';
+import { getLoanById, castVoteOnLoan, processLoanRepayment } from '@/services/loanService';
 import { getWalletById } from '@/services/walletService';
 import type { Loan, Repayment, GroupWallet } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +21,7 @@ import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useUser } from '@/contexts/UserContext';
-import { processLoanRepayment } from '@/services/loanService';
+
 
 const getLoanStatusBadgeClasses = (status: Loan['status']) => {
   switch (status) {
@@ -267,7 +267,7 @@ export default function LoanDetailPage() {
                 <Vote className="w-6 h-6 text-primary" />
                 <CardTitle className="font-headline text-lg sm:text-xl">Community Vote</CardTitle>
               </div>
-              <p className="text-sm text-muted-foreground">{totalVotes} of {sourceWallet?.members.length} members have voted.</p>
+              <p className="text-sm text-muted-foreground">{totalVotes} of {sourceWallet?.members.length || 0} members have voted.</p>
             </CardHeader>
             <CardContent className="p-4 sm:p-6">
               <div className="space-y-4">
@@ -296,7 +296,7 @@ export default function LoanDetailPage() {
                   <AlertDescription>Your vote has been recorded on the ledger.</AlertDescription>
                 </Alert>
               )}
-               {!isMemberOfWallet && (
+               {!isMemberOfWallet && loan.status === 'voting_in_progress' && (
                  <Alert className="mt-6">
                   <AlertTitle>Voting is for Wallet Members Only</AlertTitle>
                   <AlertDescription>You must be a member of the "{sourceWallet?.name}" wallet to vote on this proposal.</AlertDescription>

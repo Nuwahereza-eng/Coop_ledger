@@ -20,7 +20,7 @@ export function ApproveLoanItem({ loan, member, wallet, onActionCompleted }: App
   const totalVotes = (loan.votesFor?.length || 0) + (loan.votesAgainst?.length || 0);
   const totalMembers = wallet?.members.length || 1;
   const voteProgress = (totalVotes / totalMembers) * 100;
-  const quorum = Math.floor(totalMembers / 2) + 1;
+  const quorum = wallet ? Math.floor(totalMembers / 2) + 1 : 0;
 
   return (
     <Card className="border-l-4 border-yellow-400 dark:border-yellow-600">
