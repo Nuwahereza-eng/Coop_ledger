@@ -14,7 +14,7 @@ import type { GroupWallet } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Wallet, Loader2 } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 
