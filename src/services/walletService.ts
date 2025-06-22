@@ -3,6 +3,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, Timestamp, addDoc, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import type { GroupWallet, Member, Transaction, Repayment } from '@/types';
 import { sha256, serializeTransactionForHashing, GENESIS_HASH } from '@/lib/crypto';
+import { addPersonalTransaction } from './personalLedgerService';
 
 
 // #region Hashing and Serialization
@@ -323,4 +324,66 @@ export async function addMemberToWallet(walletId: string, member: Member): Promi
     console.error(`[WalletService] Error adding member to wallet ${walletId}:`, error);
     throw new Error(`Could not add member. Firestore error: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+export async function withdrawMyContributions(walletId: string, memberId: string, amount: number): Promise<void> {
+    await runTransaction(db, async (firestoreTransaction) => {
+        const walletRef = doc(db, 'wallets', walletId);
+        const walletDoc = await firestoreTransaction.get(walletRef);
+        if (!walletDoc.exists()) throw new Error("Wallet not found!");
+        const walletData = walletDoc.data() as GroupWallet;
+
+        // 1. Verify member and calculate their total contributions
+        const memberContributions = (walletData.transactions || [])
+            .filter(tx => tx.type === 'contribution' && tx.memberId === memberId)
+            .reduce((sum, tx) => sum + tx.amount, 0);
+        
+        const memberWithdrawals = (walletData.transactions || [])
+            .filter(tx => tx.type === 'group_withdrawal' && tx.memberId === memberId)
+            .reduce((sum, tx) => sum + Math.abs(tx.amount), 0); // withdrawals are negative
+
+        const netContributions = memberContributions - memberWithdrawals;
+
+        if (amount > netContributions) {
+            throw new Error(`Withdrawal amount of ${amount.toLocaleString()} exceeds your net contributions of ${netContributions.toLocaleString()}.`);
+        }
+        if (amount > walletData.balance) {
+            throw new Error("Withdrawal amount exceeds wallet's total balance.");
+        }
+
+        // 2. Create wallet withdrawal transaction
+        const currentTransactionsWithTimestamps = (walletData.transactions || []) as (Transaction & {date: Timestamp})[];
+        const lastTransaction = currentTransactionsWithTimestamps.length > 0
+            ? [...currentTransactionsWithTimestamps].sort((a, b) => b.date.toMillis() - a.date.toMillis())[0]
+            : null;
+        const previousHash = lastTransaction?.hash ?? GENESIS_HASH;
+
+        const withdrawalTx: Omit<Transaction, 'hash'> = {
+            id: `txn-mbr-wthdrw-${new Date().getTime()}-${Math.random().toString(16).slice(2)}`,
+            type: 'group_withdrawal',
+            amount: -amount, // Negative from group wallet
+            date: Timestamp.now(),
+            description: `Member withdrawal by ${walletData.members.find(m => m.id === memberId)?.name}.`,
+            previousHash: previousHash,
+            walletId: walletId,
+            memberId: memberId,
+        };
+        const hash = await sha256(serializeTransactionForHashing(withdrawalTx));
+        const finalTx: Transaction & { date: Timestamp } = { ...withdrawalTx, hash };
+
+        // 3. Update wallet balance and transactions
+        const newBalance = walletData.balance - amount;
+        firestoreTransaction.update(walletRef, {
+            balance: newBalance,
+            transactions: arrayUnion(finalTx)
+        });
+
+        // 4. Create personal deposit transaction for the member (will update their personal balance in UI)
+        await addPersonalTransaction({
+            memberId: memberId,
+            type: 'personal_deposit',
+            amount: amount, // Positive to personal wallet
+            description: `Received from personal withdrawal from "${walletData.name}"`
+        });
+    });
 }

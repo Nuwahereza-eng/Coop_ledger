@@ -3,26 +3,24 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import AppLayout from '../../AppLayout';
-import type { GroupWallet, Member as MemberType, Transaction, WithdrawalProposal } from '@/types';
+import type { GroupWallet, Member as MemberType, Transaction } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ContributeForm } from '@/components/features/wallets/ContributeForm';
 import { TransactionListItem } from '@/components/features/records/TransactionListItem';
-import { ArrowLeft, Users, ListCollapse, PlusCircle, Loader2, AlertTriangle, Landmark, Download } from 'lucide-react';
+import { ArrowLeft, Users, ListCollapse, PlusCircle, Loader2, AlertTriangle, Landmark } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState, useCallback } from 'react';
 import { getWalletById, addMemberToWallet } from '@/services/walletService';
-import { getProposalsForWallet } from '@/services/withdrawalService';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { mockMembers } from '@/lib/mockData';
 import { useUser } from '@/contexts/UserContext';
 import { useToast } from '@/hooks/use-toast';
-import { ProposeWithdrawalDialog } from '@/components/features/wallets/ProposeWithdrawalDialog';
-import { WithdrawalProposalCard } from '@/components/features/wallets/WithdrawalProposalCard';
-import { Separator } from '@/components/ui/separator';
+import { WithdrawMyContributions } from '@/components/features/wallets/WithdrawMyContributions';
+
 
 export default function WalletDetailPage() {
   const params = useParams();
@@ -32,11 +30,9 @@ export default function WalletDetailPage() {
   const { toast } = useToast();
   
   const [wallet, setWallet] = useState<GroupWallet | undefined>(undefined);
-  const [proposals, setProposals] = useState<WithdrawalProposal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
-  const [isProposeDialogOpen, setIsProposeDialogOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!walletId) return;
@@ -44,14 +40,10 @@ export default function WalletDetailPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const [firestoreWallet, withdrawalProposals] = await Promise.all([
-        getWalletById(walletId),
-        getProposalsForWallet(walletId)
-      ]);
+      const firestoreWallet = await getWalletById(walletId);
 
       if (firestoreWallet) {
         setWallet(firestoreWallet);
-        setProposals(withdrawalProposals);
       } else {
         setError(`Wallet with ID "${walletId}" not found.`);
       }
@@ -109,8 +101,6 @@ export default function WalletDetailPage() {
 
 
   const isMember = wallet?.members.some(m => m.id === currentUser?.id) ?? false;
-  const isCreator = wallet?.creatorId === currentUser?.id;
-  const activeProposals = proposals.filter(p => p.status === 'voting_in_progress' || p.status === 'approved');
 
   if (isLoading) {
     return (
@@ -177,12 +167,6 @@ export default function WalletDetailPage() {
 
   return (
     <AppLayout>
-        <ProposeWithdrawalDialog
-            isOpen={isProposeDialogOpen}
-            setIsOpen={setIsProposeDialogOpen}
-            wallet={wallet}
-            onSuccess={fetchData}
-        />
       <div className="space-y-6 sm:space-y-8">
         <Button variant="outline" asChild className="mb-2 text-sm">
           <Link href="/wallets">
@@ -218,31 +202,6 @@ export default function WalletDetailPage() {
             />
           </div>
         </Card>
-
-        {isCreator && (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Creator Actions</CardTitle>
-                    <CardDescription>As the creator of this wallet, you can propose to withdraw funds.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button onClick={() => setIsProposeDialogOpen(true)}>
-                        <Download className="mr-2 h-4 w-4" /> Propose Withdrawal
-                    </Button>
-                </CardContent>
-            </Card>
-        )}
-
-        {activeProposals.length > 0 && (
-            <div className="space-y-4">
-                <h2 className="text-2xl font-bold font-headline">Active Withdrawal Proposals</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {activeProposals.map(p => (
-                        <WithdrawalProposalCard key={p.id} proposal={p} wallet={wallet} onAction={fetchData} />
-                    ))}
-                </div>
-            </div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           <div className="lg:col-span-2 space-y-6 sm:space-y-8">
@@ -291,17 +250,21 @@ export default function WalletDetailPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="shadow-md">
-                <CardHeader className="p-4 sm:p-6">
-                  <CardTitle className="flex items-center gap-2 font-headline text-lg sm:text-xl">
-                    <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                    Make a Contribution
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6">
-                  <ContributeForm wallet={wallet} onSuccess={fetchData} />
-                </CardContent>
-              </Card>
+              <>
+                <WithdrawMyContributions wallet={wallet} onSuccess={fetchData} />
+
+                <Card className="shadow-md">
+                  <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="flex items-center gap-2 font-headline text-lg sm:text-xl">
+                      <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                      Make a Contribution
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 sm:p-6">
+                    <ContributeForm wallet={wallet} onSuccess={fetchData} />
+                  </CardContent>
+                </Card>
+              </>
             )}
 
             <Card className="shadow-md">
