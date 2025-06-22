@@ -17,7 +17,7 @@ interface ApproveLoanItemProps {
 }
 
 export function ApproveLoanItem({ loan, member, wallet, onActionCompleted }: ApproveLoanItemProps) {
-  const totalVotes = loan.votesFor.length + loan.votesAgainst.length;
+  const totalVotes = (loan.votesFor?.length || 0) + (loan.votesAgainst?.length || 0);
   const totalMembers = wallet?.members.length || 1;
   const voteProgress = (totalVotes / totalMembers) * 100;
   const quorum = Math.floor(totalMembers / 2) + 1;
@@ -62,8 +62,8 @@ export function ApproveLoanItem({ loan, member, wallet, onActionCompleted }: App
             </div>
             <Progress value={voteProgress} className="mt-1 h-2"/>
             <div className="flex justify-between items-center text-xs mt-1">
-                <span className="flex items-center gap-1 text-green-600"><ThumbsUp className="h-3 w-3"/> {loan.votesFor.length}</span>
-                <span className="flex items-center gap-1 text-red-600"><ThumbsDown className="h-3 w-3"/> {loan.votesAgainst.length}</span>
+                <span className="flex items-center gap-1 text-green-600"><ThumbsUp className="h-3 w-3"/> {loan.votesFor?.length || 0}</span>
+                <span className="flex items-center gap-1 text-red-600"><ThumbsDown className="h-3 w-3"/> {loan.votesAgainst?.length || 0}</span>
             </div>
         </div>
       </CardContent>

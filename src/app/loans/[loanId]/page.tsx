@@ -207,7 +207,7 @@ export default function LoanDetailPage() {
   const hasVoted = loan.voters?.includes(currentUser?.id ?? '') ?? false;
   const canVote = isMemberOfWallet && !hasVoted && loan.status === 'voting_in_progress';
   
-  const totalVotes = loan.votesFor.length + loan.votesAgainst.length;
+  const totalVotes = (loan.votesFor?.length || 0) + (loan.votesAgainst?.length || 0);
   const quorum = sourceWallet ? Math.floor(sourceWallet.members.length / 2) + 1 : 0;
 
   return (
@@ -272,8 +272,8 @@ export default function LoanDetailPage() {
             <CardContent className="p-4 sm:p-6">
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-sm mb-1">
-                  <span className="font-medium text-green-600">For: {loan.votesFor.length}</span>
-                  <span className="font-medium text-red-600">Against: {loan.votesAgainst.length}</span>
+                  <span className="font-medium text-green-600">For: {loan.votesFor?.length || 0}</span>
+                  <span className="font-medium text-red-600">Against: {loan.votesAgainst?.length || 0}</span>
                 </div>
                 <Progress value={(totalVotes / (sourceWallet?.members.length || 1)) * 100} className="h-3" />
                  <p className="text-xs text-muted-foreground text-center">A majority of {quorum} votes "For" is needed to approve this proposal.</p>
