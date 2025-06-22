@@ -10,6 +10,7 @@ interface UserContextType {
   currentUser: Member | null;
   setCurrentUser: Dispatch<SetStateAction<Member | null>>;
   users: Member[];
+  addUser: (user: Member) => void;
   updateCurrentUser: (updatedData: Partial<Member>) => void;
   isUserInitialized: boolean;
 }
@@ -29,8 +30,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       let currentUsers = mockUsers;
       if (storedUsersItem) {
           const storedUsers = JSON.parse(storedUsersItem);
-          // Quick validation
-          if(Array.isArray(storedUsers) && storedUsers.length === mockUsers.length) {
+          // Quick validation - allow for more users than the mock list if new ones were created
+          if(Array.isArray(storedUsers) && storedUsers.length >= mockUsers.length) {
             currentUsers = storedUsers;
             setUsers(storedUsers);
           }
@@ -50,6 +51,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } finally {
         setIsUserInitialized(true);
     }
+  }, []);
+
+  const addUser = useCallback((newUser: Member) => {
+    setUsers(prevUsers => {
+        const newUsers = [...prevUsers, newUser];
+        localStorage.setItem('users', JSON.stringify(newUsers));
+        return newUsers;
+    });
   }, []);
 
   const updateCurrentUser = useCallback((updatedData: Partial<Member>) => {
@@ -80,7 +89,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser, isUserInitialized]);
 
-  const value = { currentUser, setCurrentUser, users, updateCurrentUser, isUserInitialized };
+  const value = { currentUser, setCurrentUser, users, addUser, updateCurrentUser, isUserInitialized };
 
   return (
     <UserContext.Provider value={value}>

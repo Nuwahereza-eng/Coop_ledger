@@ -5,6 +5,7 @@ export interface Member {
   id: string;
   name: string;
   role?: 'member' | 'admin';
+  phoneNumber?: string;
   hashedPii?: string; // One-way hash of PII
   verificationStatus: 'verified' | 'pending' | 'unverified';
   creditScore?: number;
