@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -99,105 +98,99 @@ export default function PersonalWalletPage() {
         setIsRemoving(false);
     }
   }
-  
-  // The AppLayout should handle the main loading state, but we add a guard here
-  // to prevent rendering with a null user, which could cause errors.
-  if (!currentUser) {
-    // This renders inside AppLayout's own loading state, so it's a fallback.
-    return (
-        <AppLayout>
-            <div className="flex justify-center items-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        </AppLayout>
-    );
-  }
 
   return (
     <AppLayout>
-      <div className="space-y-8">
-        <div className="flex items-center gap-3">
-          <WalletCards className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl sm:text-3xl font-bold font-headline text-foreground">
-            Personal Wallet
-          </h1>
+      {!currentUser ? (
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="mt-4 text-muted-foreground">Loading wallet...</p>
         </div>
+      ) : (
+        <div className="space-y-8">
+          <div className="flex items-center gap-3">
+            <WalletCards className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline text-foreground">
+              Personal Wallet
+            </h1>
+          </div>
 
-        <Card className="text-center shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg text-muted-foreground">Current Balance</CardTitle>
-            <CardDescription className="text-4xl font-bold text-primary">
-              {currentUser.personalWalletBalance.toLocaleString()} UGX
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Card>
+          <Card className="text-center shadow-lg">
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <ArrowUpCircle className="h-6 w-6 text-green-500" />
-                <CardTitle>Add Funds</CardTitle>
-              </div>
-              <CardDescription>Deposit funds into your personal wallet. This will be recorded on the ledger.</CardDescription>
+              <CardTitle className="text-lg text-muted-foreground">Current Balance</CardTitle>
+              <CardDescription className="text-4xl font-bold text-primary">
+                {(currentUser.personalWalletBalance ?? 0).toLocaleString()} UGX
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Form {...addFundsForm}>
-                <form onSubmit={addFundsForm.handleSubmit(handleAddFunds)} className="space-y-4">
-                  <FormField
-                    control={addFundsForm.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Amount to Add</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="Enter amount" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" disabled={isAdding}>
-                    {isAdding ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...</> : 'Add Funds'}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <ArrowDownCircle className="h-6 w-6 text-red-500" />
-                <CardTitle>Remove Funds</CardTitle>
-              </div>
-              <CardDescription>Withdraw funds from your personal wallet. This will be recorded on the ledger.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...removeFundsForm}>
-                <form onSubmit={removeFundsForm.handleSubmit(handleRemoveFunds)} className="space-y-4">
-                   <FormField
-                    control={removeFundsForm.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Amount to Remove</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="Enter amount" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" variant="destructive" className="w-full" disabled={isRemoving}>
-                    {isRemoving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Removing...</> : 'Remove Funds'}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <ArrowUpCircle className="h-6 w-6 text-green-500" />
+                  <CardTitle>Add Funds</CardTitle>
+                </div>
+                <CardDescription>Deposit funds into your personal wallet. This will be recorded on the ledger.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...addFundsForm}>
+                  <form onSubmit={addFundsForm.handleSubmit(handleAddFunds)} className="space-y-4">
+                    <FormField
+                      control={addFundsForm.control}
+                      name="amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount to Add</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="Enter amount" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" className="w-full" disabled={isAdding}>
+                      {isAdding ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...</> : 'Add Funds'}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <ArrowDownCircle className="h-6 w-6 text-red-500" />
+                  <CardTitle>Remove Funds</CardTitle>
+                </div>
+                <CardDescription>Withdraw funds from your personal wallet. This will be recorded on the ledger.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...removeFundsForm}>
+                  <form onSubmit={removeFundsForm.handleSubmit(handleRemoveFunds)} className="space-y-4">
+                    <FormField
+                      control={removeFundsForm.control}
+                      name="amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount to Remove</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="Enter amount" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" variant="destructive" className="w-full" disabled={isRemoving}>
+                      {isRemoving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Removing...</> : 'Remove Funds'}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      )}
     </AppLayout>
   );
 }
