@@ -24,30 +24,41 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const storedUserItem = localStorage.getItem('currentUser');
       const storedUsersItem = localStorage.getItem('users');
+      const storedUserItem = localStorage.getItem('currentUser');
 
-      let currentUsers = mockUsers;
+      // Step 1: Determine the definitive list of users from localStorage or fall back to mocks.
+      let definitiveUsers = mockUsers;
       if (storedUsersItem) {
-          const storedUsers = JSON.parse(storedUsersItem);
-          // Quick validation - allow for more users than the mock list if new ones were created
-          if(Array.isArray(storedUsers) && storedUsers.length >= mockUsers.length) {
-            currentUsers = storedUsers;
-            setUsers(storedUsers);
+        try {
+          const parsedUsers = JSON.parse(storedUsersItem);
+          if (Array.isArray(parsedUsers) && parsedUsers.length > 0) {
+            definitiveUsers = parsedUsers;
           }
+        } catch (e) {
+          console.error("Failed to parse 'users' from localStorage, falling back to mock data.", e);
+        }
       }
+      setUsers(definitiveUsers);
 
+      // Step 2: Determine the current user based on the definitive list.
       if (storedUserItem && storedUserItem !== 'null' && storedUserItem !== 'undefined') {
-        const storedUser = JSON.parse(storedUserItem) as Member;
-        const userInList = currentUsers.find(u => u.id === storedUser.id);
-        setCurrentUser(userInList || null);
+        try {
+            const storedUser = JSON.parse(storedUserItem) as Member;
+            // Find the user in the *definitive* list we just established.
+            const userInList = definitiveUsers.find(u => u.id === storedUser.id);
+            setCurrentUser(userInList || null);
+        } catch(e) {
+            console.error("Failed to parse 'currentUser' from localStorage", e);
+            setCurrentUser(null);
+        }
       } else {
-        // No user in local storage, so currentUser remains null
         setCurrentUser(null);
       }
     } catch (error) {
-        console.error("Failed to parse user from localStorage", error);
+        console.error("An unexpected error occurred during user initialization:", error);
         setCurrentUser(null);
+        setUsers(mockUsers);
     } finally {
         setIsUserInitialized(true);
     }
