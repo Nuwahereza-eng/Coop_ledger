@@ -70,8 +70,8 @@ export default function AdminDashboardPage() {
   }, [userRole, isRoleInitialized, router]);
 
   const adminFeatures = [
-    { title: 'Manage Members', description: `View, approve, and manage all ${isLoading ? '...' : numMembers} SACCO members.`, icon: Users, href: '/admin/manage-members', cta: 'Go to Members', img: 'https://loremflickr.com/600/400/users,management', hint: 'user management', disabled: false },
-    { title: 'Wallets Overview', description: `Monitor ${isLoading ? '...' : numWallets} group wallets. Total balance: ${isLoading ? '...' : totalPlatformBalance.toLocaleString()} UGX.`, icon: Landmark, href: '/admin/wallets-overview', cta: 'View Wallets', img: 'https://loremflickr.com/600/400/finance,dashboard', hint: 'financial dashboard', disabled: false },
+    { title: 'Manage Members', description: `View, approve, and manage all ${isLoading ? '...' : numMembers} SACCO members.`, icon: Users, href: '/admin/manage-members', cta: 'Go to Members', img: 'https://plus.unsplash.com/premium_photo-1664474578613-3c0a7de53bfd?q=80&w=1172&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'user management', disabled: false },
+    { title: 'Wallets Overview', description: `Monitor ${isLoading ? '...' : numWallets} group wallets. Total balance: ${isLoading ? '...' : totalPlatformBalance.toLocaleString()} UGX.`, icon: Landmark, href: '/admin/wallets-overview', cta: 'View Wallets', img: 'https://plus.unsplash.com/premium_photo-1672759267918-9850a3158498?q=80&w=701&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'financial dashboard', disabled: false },
     { title: 'System Logs', description: `Track all ${isLoading ? '...' : numTotalTransactions} system-level activities and important events.`, icon: History, href: '/admin/system-logs', cta: 'View Logs', img: 'https://loremflickr.com/600/400/server,log', hint: 'server logs', disabled: false },
     { title: 'Approve Loans', description: `Review and approve/reject ${isLoading ? '...' : (numPendingLoans > 0 ? numPendingLoans + ' pending' : 'loan')} applications.`, icon: ListChecks, href: '/admin/approve-loans', cta: 'Review Loans', img: 'https://loremflickr.com/600/400/approval,checklist', hint: 'approval checklist', disabled: false },
     { title: 'Platform Analytics', description: 'View key metrics and reports on platform usage and growth.', icon: BarChart3, href: '/admin/analytics', cta: 'View Analytics', img: 'https://loremflickr.com/600/400/data,chart', hint: 'data charts', disabled: true },
@@ -109,7 +109,7 @@ export default function AdminDashboardPage() {
             </div>
             <div className="md:w-1/3 mt-6 md:mt-0 flex justify-center">
               <Image 
-                src="https://loremflickr.com/300/300/security,shield" 
+                src="https://images.unsplash.com/photo-1632406896547-96b1253a2ed4?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
                 alt="Admin illustration" 
                 width={250} 
                 height={250} 
