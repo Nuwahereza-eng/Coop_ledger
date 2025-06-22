@@ -13,6 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { addPersonalTransaction } from '@/services/personalLedgerService';
 
 const amountSchema = z.object({
   amount: z.coerce.number().positive({ message: 'Amount must be positive.' }),
@@ -38,15 +39,29 @@ export default function PersonalWalletPage() {
   async function handleAddFunds(data: AmountFormData) {
     if (!currentUser) return;
     setIsAdding(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    updateCurrentUser({ personalWalletBalance: currentUser.personalWalletBalance + data.amount });
-    toast({
-      title: 'Funds Added',
-      description: `${data.amount.toLocaleString()} UGX has been added to your personal wallet.`,
-    });
-    addFundsForm.reset({ amount: 0 });
-    setIsAdding(false);
+    try {
+        await addPersonalTransaction({
+            memberId: currentUser.id,
+            type: 'personal_deposit',
+            amount: data.amount,
+            description: `Personal deposit by ${currentUser.name}`
+        });
+        updateCurrentUser({ personalWalletBalance: currentUser.personalWalletBalance + data.amount });
+        toast({
+            title: 'Funds Added',
+            description: `${data.amount.toLocaleString()} UGX has been added and recorded in the ledger.`,
+        });
+        addFundsForm.reset({ amount: 0 });
+    } catch(error) {
+        console.error("Failed to add funds:", error);
+        toast({
+            title: 'Failed to Add Funds',
+            description: 'There was an error recording your transaction.',
+            variant: 'destructive',
+        });
+    } finally {
+        setIsAdding(false);
+    }
   }
 
   async function handleRemoveFunds(data: AmountFormData) {
@@ -60,15 +75,29 @@ export default function PersonalWalletPage() {
       return;
     }
     setIsRemoving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    updateCurrentUser({ personalWalletBalance: currentUser.personalWalletBalance - data.amount });
-    toast({
-      title: 'Funds Removed',
-      description: `${data.amount.toLocaleString()} UGX has been removed from your personal wallet.`,
-    });
-    removeFundsForm.reset({ amount: 0 });
-    setIsRemoving(false);
+     try {
+        await addPersonalTransaction({
+            memberId: currentUser.id,
+            type: 'personal_withdrawal',
+            amount: -data.amount, // Store withdrawals as negative amounts for consistency
+            description: `Personal withdrawal by ${currentUser.name}`
+        });
+        updateCurrentUser({ personalWalletBalance: currentUser.personalWalletBalance - data.amount });
+        toast({
+            title: 'Funds Removed',
+            description: `${data.amount.toLocaleString()} UGX has been removed and recorded in the ledger.`,
+        });
+        removeFundsForm.reset({ amount: 0 });
+    } catch (error) {
+        console.error("Failed to remove funds:", error);
+        toast({
+            title: 'Failed to Remove Funds',
+            description: 'There was an error recording your transaction.',
+            variant: 'destructive',
+        });
+    } finally {
+        setIsRemoving(false);
+    }
   }
 
   return (
@@ -97,7 +126,7 @@ export default function PersonalWalletPage() {
                 <ArrowUpCircle className="h-6 w-6 text-green-500" />
                 <CardTitle>Add Funds</CardTitle>
               </div>
-              <CardDescription>Simulate depositing funds into your personal wallet.</CardDescription>
+              <CardDescription>Deposit funds into your personal wallet. This will be recorded on the ledger.</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...addFundsForm}>
@@ -129,7 +158,7 @@ export default function PersonalWalletPage() {
                 <ArrowDownCircle className="h-6 w-6 text-red-500" />
                 <CardTitle>Remove Funds</CardTitle>
               </div>
-              <CardDescription>Simulate withdrawing funds from your personal wallet.</CardDescription>
+              <CardDescription>Withdraw funds from your personal wallet. This will be recorded on the ledger.</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...removeFundsForm}>

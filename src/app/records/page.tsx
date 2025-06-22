@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getWallets } from '@/services/walletService';
+import { getPersonalTransactions } from '@/services/personalLedgerService';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function RecordsPage() {
@@ -24,13 +25,22 @@ export default function RecordsPage() {
   useEffect(() => {
     async function fetchTransactions() {
       try {
-        console.log("[RecordsPage] Fetching all wallets to aggregate transactions...");
+        console.log("[RecordsPage] Fetching all transactions...");
         setIsLoading(true);
         setError(null);
-        const wallets = await getWallets();
-        const transactions = wallets.flatMap(wallet => wallet.transactions || []);
-        console.log(`[RecordsPage] Aggregated ${transactions.length} transactions from ${wallets.length} wallets.`);
-        setAllTransactions(transactions);
+        
+        const [wallets, personalTxs] = await Promise.all([
+            getWallets(),
+            getPersonalTransactions()
+        ]);
+
+        const walletTxs = wallets.flatMap(wallet => wallet.transactions || []);
+        
+        const combinedTransactions = [...walletTxs, ...personalTxs];
+        
+        console.log(`[RecordsPage] Aggregated ${combinedTransactions.length} total transactions.`);
+        setAllTransactions(combinedTransactions);
+
       } catch (err) {
         console.error("[RecordsPage] Failed to fetch transactions:", err);
         setError(err instanceof Error ? err.message : "An unknown error occurred while fetching records.");
@@ -46,7 +56,7 @@ export default function RecordsPage() {
     .filter(tx => tx.description.toLowerCase().includes(searchTerm.toLowerCase()) || tx.id.includes(searchTerm))
     .sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
 
-  const transactionTypes: Array<TransactionType | 'all'> = ['all', 'contribution', 'loan_disbursement', 'loan_repayment', 'interest_accrual', 'wallet_creation', 'member_join'];
+  const transactionTypes: Array<TransactionType | 'all'> = ['all', 'contribution', 'loan_disbursement', 'loan_repayment', 'interest_accrual', 'wallet_creation', 'member_join', 'personal_deposit', 'personal_withdrawal'];
 
   return (
     <AppLayout>

@@ -7,6 +7,7 @@ import { History, Filter, Loader2, AlertTriangle } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
 import { useRouter } from 'next/navigation';
 import { getWallets } from '@/services/walletService';
+import { getPersonalTransactions } from '@/services/personalLedgerService';
 import type { Transaction, TransactionType } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -33,13 +34,18 @@ export default function SystemLogsPage() {
     } else if (userRole === 'admin') {
       async function fetchTransactions() {
         try {
-          console.log("[SystemLogsPage] Fetching all wallets to aggregate transactions...");
+          console.log("[SystemLogsPage] Fetching all transactions...");
           setIsLoading(true);
           setError(null);
-          const wallets = await getWallets();
-          const transactions = wallets.flatMap(wallet => wallet.transactions || []);
-          console.log(`[SystemLogsPage] Aggregated ${transactions.length} transactions from ${wallets.length} wallets.`);
-          setAllTransactions(transactions);
+          const [wallets, personalTxs] = await Promise.all([
+            getWallets(),
+            getPersonalTransactions()
+          ]);
+          const walletTxs = wallets.flatMap(wallet => wallet.transactions || []);
+          const combinedTransactions = [...walletTxs, ...personalTxs];
+          
+          console.log(`[SystemLogsPage] Aggregated ${combinedTransactions.length} total transactions.`);
+          setAllTransactions(combinedTransactions);
         } catch (err) {
           console.error("[SystemLogsPage] Failed to fetch transactions:", err);
           setError(err instanceof Error ? err.message : "An unknown error occurred while fetching records.");
@@ -56,7 +62,7 @@ export default function SystemLogsPage() {
     .filter(tx => tx.description.toLowerCase().includes(searchTerm.toLowerCase()) || tx.id.includes(searchTerm))
     .sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
 
-  const transactionTypes: Array<TransactionType | 'all'> = ['all', 'contribution', 'loan_disbursement', 'loan_repayment', 'interest_accrual', 'wallet_creation', 'member_join'];
+  const transactionTypes: Array<TransactionType | 'all'> = ['all', 'contribution', 'loan_disbursement', 'loan_repayment', 'interest_accrual', 'wallet_creation', 'member_join', 'personal_deposit', 'personal_withdrawal'];
 
 
   if (!isRoleInitialized || userRole !== 'admin') {
