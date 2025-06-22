@@ -99,6 +99,19 @@ export default function PersonalWalletPage() {
         setIsRemoving(false);
     }
   }
+  
+  // The AppLayout should handle the main loading state, but we add a guard here
+  // to prevent rendering with a null user, which could cause errors.
+  if (!currentUser) {
+    // This renders inside AppLayout's own loading state, so it's a fallback.
+    return (
+        <AppLayout>
+            <div className="flex justify-center items-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -114,7 +127,7 @@ export default function PersonalWalletPage() {
           <CardHeader>
             <CardTitle className="text-lg text-muted-foreground">Current Balance</CardTitle>
             <CardDescription className="text-4xl font-bold text-primary">
-              {currentUser?.personalWalletBalance.toLocaleString()} UGX
+              {currentUser.personalWalletBalance.toLocaleString()} UGX
             </CardDescription>
           </CardHeader>
         </Card>
