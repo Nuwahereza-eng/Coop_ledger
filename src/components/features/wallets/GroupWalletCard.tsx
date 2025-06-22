@@ -13,8 +13,8 @@ interface GroupWalletCardProps {
 }
 
 export function GroupWalletCard({ wallet }: GroupWalletCardProps) {
-  let imageUrl = `https://loremflickr.com/400/200/community,savings`;
-  let imageHint = 'community savings';
+  let imageUrl = "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+  let imageHint = 'community finance';
 
   if (wallet.name.toLowerCase().includes('youth')) {
     imageUrl = "https://images.unsplash.com/photo-1502444330042-d1a1ddf9bb5b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8eW91dGh8ZW58MHx8MHx8fDA%3D";

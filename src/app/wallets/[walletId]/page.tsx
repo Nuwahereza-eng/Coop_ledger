@@ -143,8 +143,8 @@ export default function WalletDetailPage() {
     );
   }
   
-  let bannerImageUrl = `https://loremflickr.com/1200/400/finance,group`;
-  let bannerImageHint = 'financial group';
+  let bannerImageUrl = `https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D`;
+  let bannerImageHint = 'community finance';
 
   if (wallet.name.toLowerCase().includes('youth')) {
     bannerImageUrl = "https://images.unsplash.com/photo-1502444330042-d1a1ddf9bb5b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8eW91dGh8ZW58MHx8MHx8fDA%3D";
@@ -274,7 +274,7 @@ export default function WalletDetailPage() {
                       <li key={member.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
-                            <AvatarImage src={`https://loremflickr.com/40/40/person,portrait`} alt={member.name} data-ai-hint="profile portrait" />
+                            <AvatarImage src="https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt={member.name} data-ai-hint="profile portrait" />
                             <AvatarFallback>{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <span className="text-sm sm:text-base">{member.name}</span>

@@ -233,12 +233,12 @@ export default function LoanDetailPage() {
           </CardHeader>
           <div className="w-full h-40 sm:h-52 overflow-hidden">
              <Image 
-                src={`https://loremflickr.com/1200/400/finance,document`}
+                src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1073&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                 alt={`Loan ${loan.id} banner`}
                 width={1200}
                 height={400}
                 className="w-full h-full object-cover"
-                data-ai-hint="financial document"
+                data-ai-hint="signed document"
                 priority
             />
           </div>
