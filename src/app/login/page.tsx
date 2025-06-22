@@ -25,7 +25,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     // Hardcoded password for demo purposes
-    const DEMO_PASSWORD = 'password123';
+    const DEMO_PASSWORD = 'password2025';
 
     // Basic validation for phone number format
     if (!/^\+256\d{9}$/.test(phoneNumber)) {
@@ -121,7 +121,6 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-               <p className="text-xs text-muted-foreground pt-1">Hint: Use a valid number (e.g., +256772333333 for admin) and 'password123'. New numbers create new accounts.</p>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Continue'}

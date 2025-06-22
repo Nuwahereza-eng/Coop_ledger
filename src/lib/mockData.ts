@@ -6,7 +6,7 @@ import type { GroupWallet, Loan, Transaction, Member, Contribution } from '@/typ
 export const mockUsers: Member[] = [
   { id: 'user-aisha-01', name: 'Aisha Ibrahim', role: 'member', verificationStatus: 'verified', creditScore: 75, personalWalletBalance: 500000, phoneNumber: '+256772111111' },
   { id: 'user-john-02', name: 'John Okello', role: 'member', verificationStatus: 'pending', personalWalletBalance: 250000, phoneNumber: '+256772222222' },
-  { id: 'user-fatima-03', name: 'Fatima Diallo', role: 'admin', verificationStatus: 'verified', creditScore: 82, personalWalletBalance: 1200000, phoneNumber: '+256772333333' },
+  { id: 'user-fatima-03', name: 'Fatima Diallo', role: 'admin', verificationStatus: 'verified', creditScore: 82, personalWalletBalance: 1200000, phoneNumber: '+256779081600' },
   { id: 'user-david-04', name: 'David Kiptoo', role: 'member', verificationStatus: 'unverified', personalWalletBalance: 100000, phoneNumber: '+256772444444' },
 ];
 
