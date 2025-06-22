@@ -142,6 +142,17 @@ export default function WalletDetailPage() {
       </AppLayout>
     );
   }
+  
+  let bannerImageUrl = `https://loremflickr.com/1200/400/finance,group`;
+  let bannerImageHint = 'financial group';
+
+  if (wallet.name.toLowerCase().includes('youth')) {
+    bannerImageUrl = "https://images.unsplash.com/photo-1502444330042-d1a1ddf9bb5b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8eW91dGh8ZW58MHx8MHx8fDA%3D";
+    bannerImageHint = "youth community";
+  } else if (wallet.name.toLowerCase().includes('women')) {
+    bannerImageUrl = "https://images.unsplash.com/photo-1506782081254-09bcfd996fd6?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+    bannerImageHint = "women empowerment";
+  }
 
   const displayMembers = wallet.members && wallet.members.length > 0 ? wallet.members : mockMembers.slice(0,3);
   const displayTransactions = wallet.transactions ? [...wallet.transactions].sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime()) : [];
@@ -178,12 +189,12 @@ export default function WalletDetailPage() {
           </CardHeader>
           <div className="w-full h-40 sm:h-60 overflow-hidden">
             <Image 
-              src={`https://loremflickr.com/1200/400/finance,group`}
+              src={bannerImageUrl}
               alt={`${wallet.name} banner`}
               width={1200}
               height={400}
               className="w-full h-full object-cover"
-              data-ai-hint="financial group"
+              data-ai-hint={bannerImageHint}
               priority
             />
           </div>

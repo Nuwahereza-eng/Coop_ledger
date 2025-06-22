@@ -13,6 +13,17 @@ interface GroupWalletCardProps {
 }
 
 export function GroupWalletCard({ wallet }: GroupWalletCardProps) {
+  let imageUrl = `https://loremflickr.com/400/200/community,savings`;
+  let imageHint = 'community savings';
+
+  if (wallet.name.toLowerCase().includes('youth')) {
+    imageUrl = "https://images.unsplash.com/photo-1502444330042-d1a1ddf9bb5b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8eW91dGh8ZW58MHx8MHx8fDA%3D";
+    imageHint = "youth community";
+  } else if (wallet.name.toLowerCase().includes('women')) {
+    imageUrl = "https://images.unsplash.com/photo-1506782081254-09bcfd996fd6?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+    imageHint = "women empowerment";
+  }
+
   return (
     <Card className="flex flex-col h-full hover:shadow-lg transition-shadow duration-300 bg-card">
       <CardHeader className="p-4 sm:p-6">
@@ -24,12 +35,12 @@ export function GroupWalletCard({ wallet }: GroupWalletCardProps) {
         </div>
         <div className="aspect-video w-full rounded-md overflow-hidden mb-2">
             <Image 
-                src={`https://loremflickr.com/400/200/community,savings`}
+                src={imageUrl}
                 alt={wallet.name}
                 width={400}
                 height={200}
                 className="w-full h-full object-cover"
-                data-ai-hint="community savings"
+                data-ai-hint={imageHint}
             />
         </div>
         <CardDescription className="text-xs sm:text-sm">Managed in {wallet.tokenType}</CardDescription>
