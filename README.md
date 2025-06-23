@@ -62,7 +62,7 @@ The loan and fund withdrawal systems are governed by the members of each group w
 
 ### Prerequisites
 - Node.js and npm installed.
-- A Firebase project set up with Firestore enabled. Your Firebase configuration should be in a `.env.local` file (this is handled automatically in Firebase Studio).
+- A Firebase project set up with Firestore enabled. Your Firebase configuration should be in a `.env.local` file.
 
 ### Running the Application
 1. Install dependencies:
@@ -77,7 +77,10 @@ The application will be available at `http://localhost:9002`.
 
 ### Demo Access
 
-You can log in and test the application using the following pre-seeded user accounts.
+A live version of the application is available for testing. You can create a new account here:
+[https://coop-ledger.vercel.app/signup](https://coop-ledger.vercel.app/signup)
+
+For local development, you can log in and test the application using the following pre-seeded user accounts.
 
 **Password for all users:** `password2025`
 
