@@ -136,7 +136,7 @@ export function CreateWalletForm() {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="UGX">UGX (Ugandan Shilling)</SelectItem>
-                      <SelectItem value="AppToken">AppToken (Native Token)</SelectItem>
+                      <SelectItem value="$CL">$CL (CoopLedger Token)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
