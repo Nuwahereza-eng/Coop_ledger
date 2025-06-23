@@ -1,56 +1,41 @@
+
 "use client";
 
-import { useState, useEffect } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { generateCreditScore, type GenerateCreditScoreOutput } from '@/ai/flows/generate-credit-score';
-import { Gauge, Bot, ThumbsUp, ThumbsDown, Sparkles, Loader2 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Gauge, Bot, ThumbsUp, ThumbsDown, Sparkles, Loader2, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useUser } from '@/contexts/UserContext';
 
-const creditScoreSchema = z.object({
-  memberId: z.string().min(1, { message: 'Member ID is required.' }).max(50, {message: "ID too long."}),
-  contributionHistory: z.string().min(10, { message: 'Contribution history must be at least 10 characters.' }).max(1000, {message: "History too long."}),
-  repaymentHistory: z.string().min(10, { message: 'Repayment history must be at least 10 characters.' }).max(1000, {message: "History too long."}),
-});
-
-type CreditScoreFormData = z.infer<typeof creditScoreSchema>;
 
 export function CreditScoreGenerator() {
   const { toast } = useToast();
+  const { currentUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [creditScoreResult, setCreditScoreResult] = useState<GenerateCreditScoreOutput | null>(null);
-  const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-
-  const form = useForm<CreditScoreFormData>({
-    resolver: zodResolver(creditScoreSchema),
-    defaultValues: {
-      memberId: '',
-      contributionHistory: '',
-      repaymentHistory: '',
-    },
-  });
-
-  async function onSubmit(data: CreditScoreFormData) {
+  async function handleGenerateScore() {
+    if (!currentUser) {
+      toast({
+        title: 'Not Logged In',
+        description: 'You must be logged in to generate a credit score.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsLoading(true);
     setCreditScoreResult(null);
+    
     try {
-      const result = await generateCreditScore(data);
+      const result = await generateCreditScore({ memberId: currentUser.id });
       setCreditScoreResult(result);
       toast({
-        title: 'Credit Score Generated',
-        description: `Successfully generated credit score for member ${data.memberId}.`,
+        title: 'Credit Score Generated!',
+        description: `We've successfully analyzed your history.`,
       });
     } catch (error) {
       console.error('Error generating credit score:', error);
@@ -76,97 +61,42 @@ export function CreditScoreGenerator() {
     return <ThumbsDown className="w-full h-full" />;
   };
 
-  if (!isClient) {
-    return (
-        <Card className="w-full max-w-2xl mx-auto">
-            <CardHeader className="text-center p-6">
-                 <div className="inline-flex justify-center items-center p-3 bg-primary/10 rounded-full mb-3 mx-auto w-fit">
-                    <Gauge className="h-10 w-10 text-primary" />
-                </div>
-                <CardTitle className="font-headline text-2xl">AI-Powered Credit Score</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-                 <div className="flex justify-center items-center h-80">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            </CardContent>
-        </Card>
-    );
-  }
-
-
   return (
-    <div className="space-y-8">
-      <Card className="w-full max-w-2xl mx-auto shadow-lg">
+    <div className="w-full max-w-2xl mx-auto space-y-8">
+      <Card className="shadow-lg">
         <CardHeader className="text-center p-6">
             <div className="inline-flex justify-center items-center p-3 bg-primary/10 rounded-full mb-3 mx-auto w-fit">
                 <Gauge className="h-10 w-10 text-primary" />
             </div>
           <CardTitle className="font-headline text-2xl text-foreground">AI-Powered Credit Score</CardTitle>
-          <CardDescription>Enter member's financial history to generate a credit reputation score.</CardDescription>
+          <CardDescription>Automatically generate your credit reputation score based on your activity.</CardDescription>
         </CardHeader>
-        <CardContent className="p-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="memberId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Member ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter member's unique ID" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="contributionHistory"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contribution History</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="E.g., Consistent monthly contributions of $50 for 2 years. One late contribution by 3 days." {...field} rows={4} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="repaymentHistory"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Repayment History</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="E.g., Took a loan of $200, repaid on time over 6 months. No defaults." {...field} rows={4} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isLoading}>
+        <CardContent className="p-6 text-center">
+            <Alert className="mb-6 text-left">
+                <Info className="h-4 w-4" />
+                <AlertTitle>How It Works</AlertTitle>
+                <AlertDescription>
+                Our AI analyzes your entire transaction history on the platform—including all contributions, deposits, and loan repayments—to generate a fair and dynamic credit score.
+                </AlertDescription>
+            </Alert>
+            <Button onClick={handleGenerateScore} className="w-full" disabled={isLoading || !currentUser}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating Score...
+                    Analyzing Your History...
                   </>
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Credit Score
+                    Generate My Credit Score
                   </>
                 )}
               </Button>
-            </form>
-          </Form>
         </CardContent>
       </Card>
 
       {isLoading && (
-        <Card className="w-full max-w-2xl mx-auto text-center p-6 shadow-md">
+        <Card className="text-center p-6 shadow-md">
           <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto mb-4" />
           <p className="text-lg font-semibold text-primary">Our AI is analyzing the data...</p>
           <p className="text-muted-foreground text-sm">This might take a moment.</p>
@@ -174,10 +104,10 @@ export function CreditScoreGenerator() {
       )}
 
       {creditScoreResult && !isLoading && (
-        <Card className="w-full max-w-2xl mx-auto animate-in fade-in-50 slide-in-from-bottom-10 duration-500 shadow-xl">
+        <Card className="animate-in fade-in-50 slide-in-from-bottom-10 duration-500 shadow-xl">
           <CardHeader className="p-6">
             <CardTitle className="font-headline text-xl flex items-center gap-2 text-foreground">
-              <Bot className="h-6 w-6 text-primary" /> Credit Score Result for Member {form.getValues('memberId')}
+              <Bot className="h-6 w-6 text-primary" /> Your Credit Score Result
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center p-6">
@@ -202,7 +132,7 @@ export function CreditScoreGenerator() {
           </CardContent>
           <CardFooter className="p-6">
             <p className="text-xs text-muted-foreground">
-              This credit score is AI-generated based on the provided data and should be used as one of many factors in decision-making.
+              This credit score is AI-generated based on your platform activity and should be used as one of many factors in decision-making.
             </p>
           </CardFooter>
         </Card>

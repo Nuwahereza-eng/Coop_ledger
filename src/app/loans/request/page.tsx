@@ -1,3 +1,4 @@
+
 import AppLayout from '../../AppLayout';
 import { LoanRequestForm } from '@/components/features/loans/LoanRequestForm';
 import Link from 'next/link';
@@ -10,7 +11,7 @@ export default function RequestLoanPage() {
       <div className="space-y-6">
         <Button variant="outline" asChild>
           <Link href="/loans">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Loans
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Loan Proposals
           </Link>
         </Button>
         <div className="flex justify-center">

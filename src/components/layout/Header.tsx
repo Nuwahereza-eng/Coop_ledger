@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Landmark } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { SidebarNavItems, type NavItem } from './SidebarNavItems'; 
 
 interface HeaderProps {
@@ -13,7 +14,7 @@ export function Header({ navItems }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center gap-2 text-lg font-semibold font-headline">
-          <Landmark className="h-7 w-7 text-primary" />
+          <Image src="/icon.svg" alt="CoopLedger Logo" width={28} height={28} />
           <span className="text-primary">Coop</span><span className="text-foreground">Ledger</span>
         </Link>
 
@@ -29,7 +30,7 @@ export function Header({ navItems }: HeaderProps) {
             <SheetContent side="left" className="w-[280px] bg-sidebar p-0">
               <div className="flex h-16 items-center px-4 border-b border-sidebar-border">
                 <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
-                 <Landmark className="h-7 w-7 text-sidebar-primary" />
+                 <Image src="/icon.svg" alt="CoopLedger Logo" width={28} height={28} />
                  <span className="text-sidebar-primary">Coop</span><span className="text-sidebar-foreground">Ledger</span>
                 </Link>
               </div>

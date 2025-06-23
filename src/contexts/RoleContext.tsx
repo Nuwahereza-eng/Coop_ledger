@@ -1,43 +1,30 @@
 
 'use client';
 
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import React, { createContext, useContext } from 'react';
+import { useUser } from './UserContext';
 
 export type UserRole = 'member' | 'admin';
 
 interface RoleContextType {
   userRole: UserRole;
-  setUserRole: Dispatch<SetStateAction<UserRole>>;
   isRoleInitialized: boolean;
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [userRole, setUserRole] = useState<UserRole>('member');
-  const [isRoleInitialized, setIsRoleInitialized] = useState(false);
+  // Get the complete user state, including the initialization status.
+  const { currentUser, isUserInitialized } = useUser();
 
-  useEffect(() => {
-    // Simulate fetching role or reading from localStorage, then set initialized
-    // For now, just set to member and mark as initialized
-    // In a real app, you might read from localStorage or an API
-    const storedRole = localStorage.getItem('userRole') as UserRole | null;
-    if (storedRole && (storedRole === 'member' || storedRole === 'admin')) {
-      setUserRole(storedRole);
-    }
-    setIsRoleInitialized(true);
-  }, []);
+  // Determine the role based on the current user. Default to 'member'.
+  const userRole = currentUser?.role || 'member';
 
-  useEffect(() => {
-    if (isRoleInitialized) {
-      localStorage.setItem('userRole', userRole);
-    }
-  }, [userRole, isRoleInitialized]);
-
-
+  // Provide the derived role and the initialization status from UserContext to children.
+  // The 'isRoleInitialized' property for this context is set using the 'isUserInitialized' variable.
   return (
-    <RoleContext.Provider value={{ userRole, setUserRole, isRoleInitialized }}>
+    <RoleContext.Provider value={{ userRole, isRoleInitialized: isUserInitialized }}>
       {children}
     </RoleContext.Provider>
   );

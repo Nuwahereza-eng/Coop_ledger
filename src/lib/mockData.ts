@@ -3,28 +3,31 @@ import type { GroupWallet, Loan, Transaction, Member, Contribution } from '@/typ
 
 // Note: As Firestore integration progresses, these mock arrays will be gradually phased out or used only as fallbacks/testing.
 
-export const mockMembers: Member[] = [
-  { id: 'member-1', name: 'Aisha Ibrahim', verificationStatus: 'verified', creditScore: 75 },
-  { id: 'member-2', name: 'John Okello', verificationStatus: 'pending' },
-  { id: 'member-3', name: 'Fatima Diallo', verificationStatus: 'verified', creditScore: 82 },
-  { id: 'member-4', name: 'David Kiptoo', verificationStatus: 'unverified' },
+export const mockUsers: Member[] = [
+  { id: 'user-aisha-01', name: 'Aisha Ibrahim', role: 'member', verificationStatus: 'verified', creditScore: 75, personalWalletBalance: 500000, phoneNumber: '+256772000001' },
+  { id: 'user-john-02', name: 'John Okello', role: 'member', verificationStatus: 'pending', personalWalletBalance: 250000, phoneNumber: '+256772000002' },
+  { id: 'user-fatima-03', name: 'Fatima Diallo', role: 'admin', verificationStatus: 'verified', creditScore: 82, personalWalletBalance: 1200000, phoneNumber: '+256772000003' },
+  { id: 'user-david-04', name: 'David Kiptoo', role: 'member', verificationStatus: 'unverified', personalWalletBalance: 100000, phoneNumber: '+256772000004' },
+  { id: 'user-peter-05', name: 'Nuwahereza Peter', role: 'member', verificationStatus: 'verified', creditScore: 68, personalWalletBalance: 300000, phoneNumber: '+256772000005' },
 ];
 
+export const mockMembers: Member[] = mockUsers; // Alias for backward compatibility if needed
+
 export const mockTransactions: Transaction[] = [
-  { id: 'txn-1', walletId: 'wallet-1', memberId: 'member-1', type: 'contribution', amount: 100000, date: '2023-01-15T10:00:00Z', description: 'Monthly contribution by Aisha' },
-  { id: 'txn-2', walletId: 'wallet-1', memberId: 'member-2', type: 'contribution', amount: 100000, date: '2023-01-16T11:00:00Z', description: 'Monthly contribution by John' },
+  { id: 'txn-1', walletId: 'wallet-1', memberId: 'user-aisha-01', type: 'contribution', amount: 100000, date: '2023-01-15T10:00:00Z', description: 'Monthly contribution by Aisha' },
+  { id: 'txn-2', walletId: 'wallet-1', memberId: 'user-john-02', type: 'contribution', amount: 100000, date: '2023-01-16T11:00:00Z', description: 'Monthly contribution by John' },
   { id: 'txn-3', walletId: 'wallet-1', type: 'loan_disbursement', amount: -50000, date: '2023-02-01T14:00:00Z', description: 'Loan to Aisha', relatedLoanId: 'loan-1' },
-  { id: 'txn-4', walletId: 'wallet-1', memberId: 'member-1', type: 'loan_repayment', amount: 10000, date: '2023-03-01T09:00:00Z', description: 'Loan repayment by Aisha', relatedLoanId: 'loan-1' },
-  { id: 'txn-5', walletId: 'wallet-2', memberId: 'member-3', type: 'contribution', amount: 200000, date: '2023-03-05T10:00:00Z', description: 'Initial contribution by Fatima' },
+  { id: 'txn-4', walletId: 'wallet-1', memberId: 'user-aisha-01', type: 'loan_repayment', amount: 10000, date: '2023-03-01T09:00:00Z', description: 'Loan repayment by Aisha', relatedLoanId: 'loan-1' },
+  { id: 'txn-5', walletId: 'wallet-2', memberId: 'user-fatima-03', type: 'contribution', amount: 200000, date: '2023-03-05T10:00:00Z', description: 'Initial contribution by Fatima' },
   { id: 'txn-6', walletId: 'wallet-1', type: 'wallet_creation', amount: 0, date: '2023-01-10T09:00:00Z', description: 'Youth Innovators SACCO wallet created' },
-  { id: 'txn-7', walletId: 'wallet-1', memberId: 'member-1', type: 'interest_accrual', amount: 5000, date: '2023-04-01T00:00:00Z', description: 'Monthly interest accrued' },
+  { id: 'txn-7', walletId: 'wallet-1', memberId: 'user-aisha-01', type: 'interest_accrual', amount: 5000, date: '2023-04-01T00:00:00Z', description: 'Monthly interest accrued' },
 ];
 
 export const mockContributions: Contribution[] = [
-    { id: 'contr-1', memberId: 'member-1', walletId: 'wallet-1', amount: 100000, tokenType: 'UGX', date: '2023-01-15T10:00:00Z' },
-    { id: 'contr-2', memberId: 'member-2', walletId: 'wallet-1', amount: 100000, tokenType: 'UGX', date: '2023-01-16T11:00:00Z' },
-    { id: 'contr-3', memberId: 'member-3', walletId: 'wallet-2', amount: 200000, tokenType: 'UGX', date: '2023-03-05T10:00:00Z' },
-    { id: 'contr-4', memberId: 'member-1', walletId: 'wallet-1', amount: 150000, tokenType: 'UGX', date: '2023-02-15T10:00:00Z' },
+    { id: 'contr-1', memberId: 'user-aisha-01', walletId: 'wallet-1', amount: 100000, tokenType: 'UGX', date: '2023-01-15T10:00:00Z' },
+    { id: 'contr-2', memberId: 'user-john-02', walletId: 'wallet-1', amount: 100000, tokenType: 'UGX', date: '2023-01-16T11:00:00Z' },
+    { id: 'contr-3', memberId: 'user-fatima-03', walletId: 'wallet-2', amount: 200000, tokenType: 'UGX', date: '2023-03-05T10:00:00Z' },
+    { id: 'contr-4', memberId: 'user-aisha-01', walletId: 'wallet-1', amount: 150000, tokenType: 'UGX', date: '2023-02-15T10:00:00Z' },
 ];
 
 // mockWallets is no longer the primary source for /wallets page, but might be used by other parts not yet migrated.
@@ -34,25 +37,25 @@ export const mockWallets: GroupWallet[] = [
     name: 'Youth Innovators SACCO',
     balance: 1250000,
     tokenType: 'UGX',
-    members: [mockMembers[0], mockMembers[1]],
+    members: [mockUsers[0], mockUsers[1]],
     transactions: mockTransactions.filter(t => t.walletId === 'wallet-1'),
-    creatorId: 'member-1',
+    creatorId: 'user-aisha-01',
   },
   {
     id: 'wallet-2',
     name: 'Women Empowerment Fund',
     balance: 3500000,
     tokenType: 'UGX',
-    members: [mockMembers[2], mockMembers[3]],
+    members: [mockUsers[2], mockUsers[3]],
     transactions: mockTransactions.filter(t => t.walletId === 'wallet-2'),
-    creatorId: 'member-3',
+    creatorId: 'user-fatima-03',
   },
 ];
 
 export const mockLoans: Loan[] = [
   {
     id: 'loan-1',
-    memberId: 'member-1',
+    memberId: 'user-aisha-01',
     walletId: 'wallet-1',
     amount: 50000,
     interestRate: 0.05, // 5%
@@ -73,7 +76,7 @@ export const mockLoans: Loan[] = [
   },
   {
     id: 'loan-2',
-    memberId: 'member-3',
+    memberId: 'user-fatima-03',
     walletId: 'wallet-2',
     amount: 200000,
     interestRate: 0.08, // 8%
@@ -85,16 +88,3 @@ export const mockLoans: Loan[] = [
     repaymentSchedule: [], 
   },
 ];
-
-// getWalletById from mock data is now superseded by the Firestore service for the wallet detail page.
-// It can be removed or kept if other parts of the app still rely on it during transition.
-// For now, let's comment it out to encourage use of the service.
-/*
-export function getWalletById(id: string): GroupWallet | undefined {
-  return mockWallets.find(wallet => wallet.id === id);
-}
-*/
-
-export function getLoanById(id: string): Loan | undefined {
-  return mockLoans.find(loan => loan.id === id);
-}

@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Landmark, Loader2 } from 'lucide-react';
 import { createWallet as createWalletService } from '@/services/walletService'; // Import the service
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/contexts/UserContext';
 
 
 const createWalletSchema = z.object({
@@ -27,6 +28,7 @@ type CreateWalletFormData = z.infer<typeof createWalletSchema>;
 export function CreateWalletForm() {
   const { toast } = useToast();
   const router = useRouter();
+  const { currentUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
@@ -44,23 +46,25 @@ export function CreateWalletForm() {
   });
 
   async function onSubmit(data: CreateWalletFormData) {
+    if (!currentUser) {
+        toast({ title: "No user found", description: "You must be logged in to create a wallet.", variant: "destructive"});
+        return;
+    }
+
     setIsLoading(true);
     try {
-      // For now, using a hardcoded creatorId. In a real app, this would come from auth.
-      const creatorId = "app-user-01"; 
       const newWalletId = await createWalletService({ 
         name: data.groupName, 
         tokenType: data.tokenType,
-        creatorId: creatorId
+        creatorId: currentUser.id,
+        creatorName: currentUser.name,
       });
       toast({
         title: 'Wallet Created Successfully!',
         description: `Group wallet "${data.groupName}" (ID: ${newWalletId.substring(0,6)}...) has been created.`,
       });
       form.reset();
-      // Optionally, redirect to the new wallet's page or the wallets list
       router.push('/wallets'); 
-      // Or router.push(`/wallets/${newWalletId}`);
     } catch (error) {
       console.error('Error creating wallet:', error);
       toast({
@@ -132,7 +136,7 @@ export function CreateWalletForm() {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="UGX">UGX (Ugandan Shilling)</SelectItem>
-                      <SelectItem value="AppToken">AppToken (Native Token)</SelectItem>
+                      <SelectItem value="$CL">$CL (CoopLedger Token)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -140,7 +144,7 @@ export function CreateWalletForm() {
               )}
             />
             
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading || !currentUser}>
               {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Wallet...</> : 'Create Wallet'}
             </Button>
           </form>

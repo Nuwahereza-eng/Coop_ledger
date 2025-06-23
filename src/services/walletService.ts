@@ -1,7 +1,15 @@
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, Timestamp, addDoc, arrayUnion } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, Timestamp, addDoc, updateDoc, arrayUnion, runTransaction } from 'firebase/firestore';
 import type { GroupWallet, Member, Transaction, Repayment } from '@/types';
+import { sha256, serializeTransactionForHashing, GENESIS_HASH } from '@/lib/crypto';
+import { addPersonalTransaction } from './personalLedgerService';
+
+
+// #region Hashing and Serialization
+// Hashing and serialization moved to lib/crypto.ts
+// #endregion
+
 
 // Helper function to convert Firestore Timestamps to ISO strings
 function convertTimestampsToISO(data: any): any {
@@ -35,27 +43,21 @@ export async function getWallets(): Promise<GroupWallet[]> {
     const walletSnapshot = await getDocs(walletsCollection);
     console.log(`[WalletService] Fetched ${walletSnapshot.docs.length} wallet document(s) from Firestore.`);
 
-    walletSnapshot.docs.forEach(doc => {
+    for (const doc of walletSnapshot.docs) {
       try {
         const data = doc.data();
-        // Using JSON.stringify/parse for deep cloning for logging to avoid issues with console display of complex objects like Timestamps before conversion
-        console.log(`[WalletService] Processing wallet ${doc.id}. Raw data:`, JSON.parse(JSON.stringify(data)));
         
         const convertedData = convertTimestampsToISO(data);
-        console.log(`[WalletService] Wallet ${doc.id} data after timestamp conversion:`, JSON.parse(JSON.stringify(convertedData)));
         
-        // Basic validation for core fields
         if (typeof convertedData.name !== 'string' || 
             typeof convertedData.balance !== 'number' || 
             typeof convertedData.tokenType !== 'string' ||
-            typeof convertedData.creatorId !== 'string'
-            // Members and transactions should ideally be arrays, but we'll handle defaulting them
+            !convertedData.creatorId
            ) {
-            console.error(`[WalletService] Wallet ${doc.id} has missing or malformed core fields (name, balance, tokenType, creatorId). Skipping. Actual data:`, convertedData);
-            return; // Skip this document
+            console.warn(`[WalletService] Wallet document ${doc.id} is missing core fields (name, balance, tokenType, creatorId) or is empty. Please check or delete this document in your Firestore database. Skipping.`, {id: doc.id, data: convertedData});
+            continue;
         }
 
-        // Ensure members and transactions are arrays, default to empty if missing/null, but log error
         const membersArray = Array.isArray(convertedData.members) ? convertedData.members : [];
         if (!Array.isArray(convertedData.members)) {
             console.warn(`[WalletService] Wallet ${doc.id} 'members' field is not an array or is missing. Defaulting to empty. Actual value:`, convertedData.members);
@@ -72,27 +74,26 @@ export async function getWallets(): Promise<GroupWallet[]> {
           balance: convertedData.balance,
           tokenType: convertedData.tokenType,
           creatorId: convertedData.creatorId,
-          members: membersArray.map(m => ({ // Ensure member objects are somewhat structured
+          members: membersArray.map((m: any) => ({
               id: m.id || `unknown-member-${Math.random().toString(36).substring(7)}`,
               name: m.name || "Unknown Member",
               verificationStatus: m.verificationStatus || "unverified",
-              ...m // spread other potential fields like creditScore
+              ...m
           })) as Member[], 
-          transactions: transactionsArray.map(t => ({ // Ensure transaction objects are somewhat structured
+          transactions: transactionsArray.map((t: any) => ({
               id: t.id || `unknown-tx-${Math.random().toString(36).substring(7)}`,
               type: t.type || "unknown",
               amount: typeof t.amount === 'number' ? t.amount : 0,
-              date: t.date || new Date().toISOString(), // default to now if date is missing post-conversion
+              date: t.date || new Date().toISOString(),
               description: t.description || "No description",
-              ...t // spread other potential fields
+              ...t
           })) as Transaction[],
         });
-        console.log(`[WalletService] Successfully processed and added wallet ${doc.id} to list.`);
       } catch (docError) {
         console.error(`[WalletService] Error processing document ${doc.id}:`, docError, "Raw data for this doc:", doc.data());
       }
-    });
-    console.log('[WalletService] Finished processing. Wallets list count:', walletsList.length, 'Wallets:', JSON.parse(JSON.stringify(walletsList)));
+    }
+    console.log('[WalletService] Finished processing. Wallets list count:', walletsList.length);
     return walletsList;
   } catch (error) {
     console.error("[WalletService] General error fetching wallets collection (e.g., permissions, network): ", error);
@@ -108,17 +109,14 @@ export async function getWalletById(id: string): Promise<GroupWallet | undefined
 
     if (walletDoc.exists()) {
       const data = walletDoc.data();
-      console.log(`[WalletService] Raw data for wallet ${id}:`, JSON.parse(JSON.stringify(data)));
       const convertedData = convertTimestampsToISO(data);
-      console.log(`[WalletService] Converted data for wallet ${id}:`, JSON.parse(JSON.stringify(convertedData)));
 
-      // Similar validation and defaulting as in getWallets
       if (typeof convertedData.name !== 'string' || 
           typeof convertedData.balance !== 'number' ||
           typeof convertedData.tokenType !== 'string' ||
-          typeof convertedData.creatorId !== 'string'
+          !convertedData.creatorId
           ) {
-          console.error(`[WalletService] Wallet ${id} (fetched by ID) has missing or malformed core fields. Returning undefined.`);
+          console.warn(`[WalletService] Wallet ${id} (fetched by ID) has missing or malformed core fields. Returning undefined. Please check this document in Firestore.`);
           return undefined;
       }
       
@@ -137,13 +135,13 @@ export async function getWalletById(id: string): Promise<GroupWallet | undefined
         balance: convertedData.balance,
         tokenType: convertedData.tokenType,
         creatorId: convertedData.creatorId,
-        members: membersArray.map(m => ({
+        members: membersArray.map((m: any) => ({
               id: m.id || `unknown-member-${Math.random().toString(36).substring(7)}`,
               name: m.name || "Unknown Member",
               verificationStatus: m.verificationStatus || "unverified",
               ...m
           })) as Member[],
-        transactions: transactionsArray.map(t => ({
+        transactions: transactionsArray.map((t: any) => ({
               id: t.id || `unknown-tx-${Math.random().toString(36).substring(7)}`,
               type: t.type || "unknown",
               amount: typeof t.amount === 'number' ? t.amount : 0,
@@ -152,7 +150,6 @@ export async function getWalletById(id: string): Promise<GroupWallet | undefined
               ...t
           })) as Transaction[],
       };
-      console.log(`[WalletService] Wallet ${id} (fetched by ID) after conversion and defaulting:`, JSON.parse(JSON.stringify(wallet)));
       return wallet;
     } else {
       console.warn(`[WalletService] Wallet with id ${id} not found.`);
@@ -168,74 +165,225 @@ interface CreateWalletData {
   name: string;
   tokenType: string;
   creatorId: string; 
+  creatorName: string;
 }
 
 export async function createWallet(walletData: CreateWalletData): Promise<string> {
-  console.log('[WalletService] Attempting to create wallet with data:', walletData);
-  try {
-    const walletsCollection = collection(db, 'wallets');
-    // Ensure the creator is added as a member with a valid structure
+    console.log('[WalletService] Attempting to create wallet with data:', walletData);
     const creatorMember: Member = {
-      id: walletData.creatorId,
-      name: `User ${walletData.creatorId.substring(0, 8)}...`, // Placeholder name, consider fetching actual user name if available
-      verificationStatus: 'pending', // Default status
-      // creditScore and hashedPii are optional and can be omitted
+        id: walletData.creatorId,
+        name: walletData.creatorName,
+        role: 'admin', // Creator is admin of the wallet by default
+        verificationStatus: 'pending', // Creator still needs to verify
+        personalWalletBalance: 0 // This should be looked up, but default for now
+    };
+
+    const genesisTransaction: Omit<Transaction, 'hash'> = {
+        id: `txn-genesis-${new Date().getTime()}`,
+        type: 'wallet_creation',
+        amount: 0,
+        date: Timestamp.now(), // Use Firestore Timestamp
+        description: `Wallet "${walletData.name}" created by ${walletData.creatorName}.`,
+        previousHash: GENESIS_HASH,
+        memberId: walletData.creatorId
+    };
+
+    const finalGenesisTx: Transaction = {
+        ...genesisTransaction,
+        hash: await sha256(serializeTransactionForHashing(genesisTransaction))
     };
 
     const newWalletDocData = {
-      name: walletData.name,
-      tokenType: walletData.tokenType,
-      creatorId: walletData.creatorId,
-      balance: 0,
-      members: [creatorMember], 
-      transactions: [] as Transaction[], // Ensure transactions is an empty array
-      createdAt: Timestamp.now() 
+        name: walletData.name,
+        tokenType: walletData.tokenType,
+        creatorId: walletData.creatorId,
+        balance: 0,
+        members: [creatorMember],
+        transactions: [finalGenesisTx],
+        createdAt: Timestamp.now()
     };
-    console.log('[WalletService] Data to be saved for new wallet:', newWalletDocData);
-    const docRef = await addDoc(walletsCollection, newWalletDocData);
-    console.log('[WalletService] Wallet created successfully with ID:', docRef.id);
-    return docRef.id;
-  } catch (error) {
-    console.error("[WalletService] Error creating wallet: ", error);
-    // It's good practice to log the actual error object for more details
-    if (error instanceof Error) {
-        console.error("[WalletService] Firestore error details:", error.message, error.stack);
+
+    try {
+        const docRef = await addDoc(collection(db, 'wallets'), newWalletDocData);
+        console.log('[WalletService] Wallet created successfully with ID:', docRef.id);
+        return docRef.id;
+    } catch (error) {
+        console.error("[WalletService] Error creating wallet document in Firestore: ", error);
+        if (error instanceof Error) {
+            console.error("[WalletService] Firestore error details:", error.message, error.stack);
+        }
+        throw new Error(`Could not create wallet. Firestore error: ${error instanceof Error ? error.message : String(error)}`);
     }
-    throw new Error(`Could not create wallet. Firestore error: ${error instanceof Error ? error.message : String(error)}`);
+}
+
+
+export type NewTransactionInput = Omit<Transaction, 'id' | 'hash' | 'previousHash' | 'date' | 'walletId'>;
+
+export async function addTransactionToWallet(walletId: string, transactionInput: NewTransactionInput): Promise<void> {
+    const walletRef = doc(db, 'wallets', walletId);
+
+    try {
+        await runTransaction(db, async (firestoreTransaction) => {
+            const walletDoc = await firestoreTransaction.get(walletRef);
+            if (!walletDoc.exists()) {
+                throw new Error("Wallet not found!");
+            }
+
+            const walletData = walletDoc.data();
+            
+            const currentTransactionsWithTimestamps = (walletData.transactions || []) as (Transaction & {date: Timestamp})[];
+
+            const lastTransaction = currentTransactionsWithTimestamps.length > 0
+                ? [...currentTransactionsWithTimestamps].sort((a, b) => b.date.toMillis() - a.date.toMillis())[0]
+                : null;
+
+
+            const previousHash = lastTransaction?.hash ?? GENESIS_HASH;
+
+            const newTransactionData: Omit<Transaction, 'hash'> = {
+                ...transactionInput,
+                id: `txn-${new Date().getTime()}-${Math.random().toString(16).slice(2)}`,
+                date: Timestamp.now(), // Use Firestore Timestamp
+                previousHash: previousHash,
+                walletId: walletId,
+            };
+
+            const hash = await sha256(serializeTransactionForHashing(newTransactionData));
+            const finalNewTransaction: Transaction & { date: Timestamp } = {
+                ...newTransactionData,
+                hash: hash,
+            };
+
+            const newBalance = walletData.balance + finalNewTransaction.amount;
+            
+            console.log("[WalletService] Adding new transaction:", finalNewTransaction);
+            console.log(`[WalletService] Updating balance from ${walletData.balance} to ${newBalance}`);
+
+            firestoreTransaction.update(walletRef, {
+                transactions: arrayUnion(finalNewTransaction),
+                balance: newBalance,
+            });
+        });
+        console.log(`[WalletService] Transaction successfully added to wallet ${walletId}.`);
+    } catch (error) {
+        console.error(`[WalletService] Error adding transaction to wallet ${walletId}:`, error);
+        throw new Error(`Could not add transaction. Firestore error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+}
+
+export async function addMemberToWallet(walletId: string, member: Member): Promise<void> {
+  const walletRef = doc(db, 'wallets', walletId);
+
+  try {
+    await runTransaction(db, async (firestoreTransaction) => {
+      const walletDoc = await firestoreTransaction.get(walletRef);
+      if (!walletDoc.exists()) {
+        throw new Error("Wallet not found!");
+      }
+
+      const walletData = walletDoc.data();
+      
+      const memberExists = (walletData.members || []).some((m: Member) => m.id === member.id);
+      if (memberExists) {
+        console.log(`[WalletService] Member ${member.id} is already in wallet ${walletId}. Nothing to do.`);
+        return; 
+      }
+
+      const currentTransactionsWithTimestamps = (walletData.transactions || []) as (Transaction & {date: Timestamp})[];
+      const lastTransaction = currentTransactionsWithTimestamps.length > 0
+          ? [...currentTransactionsWithTimestamps].sort((a, b) => b.date.toMillis() - a.date.toMillis())[0]
+          : null;
+      const previousHash = lastTransaction?.hash ?? GENESIS_HASH;
+
+      const joinTransaction: Omit<Transaction, 'hash'> = {
+          id: `txn-join-${new Date().getTime()}-${Math.random().toString(16).slice(2)}`,
+          type: 'member_join',
+          amount: 0,
+          date: Timestamp.now(),
+          description: `Member ${member.name} joined the wallet.`,
+          previousHash: previousHash,
+          walletId: walletId,
+          memberId: member.id,
+      };
+
+      const hash = await sha256(serializeTransactionForHashing(joinTransaction));
+      const finalJoinTransaction: Transaction & { date: Timestamp } = {
+          ...joinTransaction,
+          hash: hash,
+      };
+      
+      console.log("[WalletService] Adding new member and join transaction:", member, finalJoinTransaction);
+
+      firestoreTransaction.update(walletRef, {
+          members: arrayUnion(member),
+          transactions: arrayUnion(finalJoinTransaction),
+      });
+    });
+    console.log(`[WalletService] Member ${member.id} successfully added to wallet ${walletId}.`);
+  } catch (error) {
+    console.error(`[WalletService] Error adding member to wallet ${walletId}:`, error);
+    throw new Error(`Could not add member. Firestore error: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
+export async function withdrawMyContributions(walletId: string, memberId: string, amount: number): Promise<void> {
+    await runTransaction(db, async (firestoreTransaction) => {
+        const walletRef = doc(db, 'wallets', walletId);
+        const walletDoc = await firestoreTransaction.get(walletRef);
+        if (!walletDoc.exists()) throw new Error("Wallet not found!");
+        const walletData = walletDoc.data() as GroupWallet;
 
-// Example: If members were in a subcollection 'members' under each wallet
-// export async function getMembersForWallet(walletId: string): Promise<Member[]> {
-//   const membersCollection = collection(db, `wallets/${walletId}/members`);
-//   const memberSnapshot = await getDocs(membersCollection);
-//   return memberSnapshot.docs.map(doc => ({ id: doc.id, ...convertTimestampsToISO(doc.data()) }) as Member);
-// }
+        // 1. Verify member and calculate their total contributions
+        const memberContributions = (walletData.transactions || [])
+            .filter(tx => tx.type === 'contribution' && tx.memberId === memberId)
+            .reduce((sum, tx) => sum + tx.amount, 0);
+        
+        const memberWithdrawals = (walletData.transactions || [])
+            .filter(tx => tx.type === 'group_withdrawal' && tx.memberId === memberId)
+            .reduce((sum, tx) => sum + Math.abs(tx.amount), 0); // withdrawals are negative
 
-// Example: If transactions were in a subcollection 'transactions' under each wallet
-// export async function getTransactionsForWallet(walletId: string): Promise<Transaction[]> {
-//   const transactionsCollection = collection(db, `wallets/${walletId}/transactions`);
-//   const transactionSnapshot = await getDocs(transactionsCollection);
-//   return transactionSnapshot.docs.map(doc => ({ id: doc.id, ...convertTimestampsToISO(doc.data()) }) as Transaction);
-// }
+        const netContributions = memberContributions - memberWithdrawals;
 
-// Placeholder for future services - you'll need to implement these similarly
-export async function getMembers(): Promise<Member[]> {
-    // This would fetch from a top-level 'members' collection
-    console.warn("getMembers from Firestore not yet fully implemented, returning mock.");
-    return []; // Or mockMembers for now
+        if (amount > netContributions) {
+            throw new Error(`Withdrawal amount of ${amount.toLocaleString()} exceeds your net contributions of ${netContributions.toLocaleString()}.`);
+        }
+        if (amount > walletData.balance) {
+            throw new Error("Withdrawal amount exceeds wallet's total balance.");
+        }
+
+        // 2. Create wallet withdrawal transaction
+        const currentTransactionsWithTimestamps = (walletData.transactions || []) as (Transaction & {date: Timestamp})[];
+        const lastTransaction = currentTransactionsWithTimestamps.length > 0
+            ? [...currentTransactionsWithTimestamps].sort((a, b) => b.date.toMillis() - a.date.toMillis())[0]
+            : null;
+        const previousHash = lastTransaction?.hash ?? GENESIS_HASH;
+
+        const withdrawalTx: Omit<Transaction, 'hash'> = {
+            id: `txn-mbr-wthdrw-${new Date().getTime()}-${Math.random().toString(16).slice(2)}`,
+            type: 'group_withdrawal',
+            amount: -amount, // Negative from group wallet
+            date: Timestamp.now(),
+            description: `Member withdrawal by ${walletData.members.find(m => m.id === memberId)?.name}.`,
+            previousHash: previousHash,
+            walletId: walletId,
+            memberId: memberId,
+        };
+        const hash = await sha256(serializeTransactionForHashing(withdrawalTx));
+        const finalTx: Transaction & { date: Timestamp } = { ...withdrawalTx, hash };
+
+        // 3. Update wallet balance and transactions
+        const newBalance = walletData.balance - amount;
+        firestoreTransaction.update(walletRef, {
+            balance: newBalance,
+            transactions: arrayUnion(finalTx)
+        });
+
+        // 4. Create personal deposit transaction for the member (will update their personal balance in UI)
+        await addPersonalTransaction({
+            memberId: memberId,
+            type: 'personal_deposit',
+            amount: amount, // Positive to personal wallet
+            description: `Received from personal withdrawal from "${walletData.name}"`
+        });
+    });
 }
-
-export async function getLoans(): Promise<Loan[]> {
-     // This would fetch from a top-level 'loans' collection
-    console.warn("getLoans from Firestore not yet fully implemented, returning mock.");
-    return []; // Or mockLoans for now
-}
-
-export async function getTransactions(): Promise<Transaction[]> {
-    // This would fetch from a top-level 'transactions' collection
-    console.warn("getTransactions from Firestore not yet fully implemented, returning mock.");
-    return []; // Or mockTransactions for now
-}
-

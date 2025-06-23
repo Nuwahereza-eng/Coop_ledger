@@ -1,9 +1,16 @@
+
+import type { Timestamp } from 'firebase/firestore';
+
 export interface Member {
   id: string;
   name: string;
+  role?: 'member' | 'admin';
+  phoneNumber?: string;
   hashedPii?: string; // One-way hash of PII
   verificationStatus: 'verified' | 'pending' | 'unverified';
   creditScore?: number;
+  personalWalletBalance: number;
+  loanLimit?: number;
 }
 
 export interface GroupWallet {
@@ -22,7 +29,7 @@ export interface Contribution {
   walletId: string;
   amount: number;
   tokenType: string;
-  date: string; // ISO Date string
+  date: string | Timestamp; // ISO Date string on client, Timestamp in Firestore
 }
 
 export interface Loan {
@@ -33,23 +40,26 @@ export interface Loan {
   interestRate: number; // Annual percentage, e.g., 0.05 for 5%
   termMonths: number;
   purpose: string;
-  status: 'pending' | 'active' | 'repaid' | 'defaulted' | 'rejected';
-  requestDate: string;
-  approvalDate?: string;
+  status: 'pending' | 'active' | 'repaid' | 'defaulted' | 'rejected' | 'voting_in_progress';
+  requestDate: string | Timestamp;
+  approvalDate?: string | Timestamp;
   repaymentSchedule: Repayment[];
   totalRepaid: number;
+  votesFor: string[]; // Array of member IDs who voted for
+  votesAgainst: string[]; // Array of member IDs who voted against
+  voters: string[]; // Array of member IDs who have voted
 }
 
 export interface Repayment {
   id: string;
-  dueDate: string;
+  dueDate: string | Timestamp;
   amountDue: number;
   amountPaid?: number;
-  paymentDate?: string;
+  paymentDate?: string | Timestamp;
   status: 'pending' | 'paid' | 'overdue';
 }
 
-export type TransactionType = 'contribution' | 'loan_disbursement' | 'loan_repayment' | 'interest_accrual' | 'wallet_creation';
+export type TransactionType = 'contribution' | 'loan_disbursement' | 'loan_repayment' | 'interest_accrual' | 'wallet_creation' | 'member_join' | 'personal_deposit' | 'personal_withdrawal' | 'group_withdrawal';
 
 export interface Transaction {
   id: string;
@@ -57,8 +67,10 @@ export interface Transaction {
   memberId?: string; // Optional, e.g. for interest accrual to wallet
   type: TransactionType;
   amount: number; // Positive for income to wallet, negative for outgoing
-  date: string;
+  date: string | Timestamp; // ISO Date string on client, Timestamp in Firestore
   description: string;
+  hash?: string;
+  previousHash?: string;
   relatedLoanId?: string;
   relatedContributionId?: string;
 }

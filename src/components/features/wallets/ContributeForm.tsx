@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -6,12 +7,13 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import type { GroupWallet } from '@/types';
 import { Loader2 } from 'lucide-react';
+import { addTransactionToWallet } from '@/services/walletService';
+import { useUser } from '@/contexts/UserContext';
 
 const contributeSchema = z.object({
   amount: z.coerce.number().positive({ message: 'Amount must be positive.' }),
@@ -22,10 +24,12 @@ type ContributeFormData = z.infer<typeof contributeSchema>;
 
 interface ContributeFormProps {
   wallet: GroupWallet;
+  onSuccess: () => void;
 }
 
-export function ContributeForm({ wallet }: ContributeFormProps) {
+export function ContributeForm({ wallet, onSuccess }: ContributeFormProps) {
   const { toast } = useToast();
+  const { currentUser, updateCurrentUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<ContributeFormData>({
@@ -37,17 +41,48 @@ export function ContributeForm({ wallet }: ContributeFormProps) {
   });
 
   async function onSubmit(data: ContributeFormData) {
+    if (!currentUser) {
+        toast({ title: "No user found", description: "You must be logged in to make a contribution.", variant: "destructive"});
+        return;
+    }
+    
+    if (currentUser.personalWalletBalance < data.amount) {
+        toast({ title: "Insufficient Funds", description: `Your personal balance of ${currentUser.personalWalletBalance.toLocaleString()} is less than the contribution amount.`, variant: "destructive"});
+        return;
+    }
+
+
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log(`Contributing ${data.amount} ${data.tokenType} to wallet ${wallet.id}:`, data);
-    toast({
-      title: 'Contribution Submitted',
-      description: `Your contribution of ${data.amount} ${data.tokenType} to "${wallet.name}" has been submitted.`,
-    });
-    setIsLoading(false);
-    form.reset({amount: 0, tokenType: wallet.tokenType});
-    // Potentially update wallet balance in UI
+
+    try {
+      await addTransactionToWallet(wallet.id, {
+        type: 'contribution',
+        amount: data.amount,
+        description: `Contribution by ${currentUser.name} to ${wallet.name}`,
+        memberId: currentUser.id,
+      });
+      
+      // Deduct from personal wallet (local state simulation)
+      updateCurrentUser({ personalWalletBalance: currentUser.personalWalletBalance - data.amount });
+
+      toast({
+        title: 'Contribution Submitted',
+        description: `Your contribution of ${data.amount} ${data.tokenType} to "${wallet.name}" has been submitted.`,
+      });
+
+      form.reset({amount: 0, tokenType: wallet.tokenType});
+      onSuccess(); // Trigger re-fetch in parent component
+
+    } catch (error) {
+      console.error("Failed to add contribution transaction:", error);
+      toast({
+        title: "Contribution Failed",
+        description: "There was an error submitting your contribution. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -60,9 +95,7 @@ export function ContributeForm({ wallet }: ContributeFormProps) {
             <FormItem>
               <FormLabel>Amount ({wallet.tokenType})</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="Enter amount" {...field} 
-                // value={field.value === 0 ? '' : field.value} onChange={(e) => field.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                 />
+                <Input type="number" placeholder="Enter amount" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -90,7 +123,7 @@ export function ContributeForm({ wallet }: ContributeFormProps) {
           )}
         />
         
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" className="w-full" disabled={isLoading || !currentUser}>
           {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : 'Contribute'}
         </Button>
       </form>
