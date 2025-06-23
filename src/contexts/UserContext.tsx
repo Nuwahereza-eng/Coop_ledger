@@ -27,18 +27,31 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const storedUsersItem = localStorage.getItem('users');
       const storedUserItem = localStorage.getItem('currentUser');
 
-      // Step 1: Determine the definitive list of users from localStorage or fall back to mocks.
+      // Step 1: Determine the definitive list of users, with a check for outdated data.
       let definitiveUsers = mockUsers;
       if (storedUsersItem) {
         try {
-          const parsedUsers = JSON.parse(storedUsersItem);
-          if (Array.isArray(parsedUsers) && parsedUsers.length > 0) {
+          const parsedUsers = JSON.parse(storedUsersItem) as Member[];
+          // Simple migration: if the first user doesn't have a phone number, the data is old.
+          if (Array.isArray(parsedUsers) && parsedUsers.length > 0 && parsedUsers[0]?.phoneNumber) {
+            // Data looks new enough, use it.
             definitiveUsers = parsedUsers;
+          } else {
+            // Data is old. Log it, and fall through to use fresh mockUsers.
+            console.log('Outdated user data in localStorage. Re-initializing with fresh mock data.');
           }
         } catch (e) {
           console.error("Failed to parse 'users' from localStorage, falling back to mock data.", e);
+          // Fall through to use mockUsers
         }
       }
+      
+      // If we fell through (or there was no stored data), definitiveUsers is mockUsers. 
+      // Let's ensure localStorage is updated to the latest version.
+      if (definitiveUsers === mockUsers) {
+          localStorage.setItem('users', JSON.stringify(mockUsers));
+      }
+
       setUsers(definitiveUsers);
 
       // Step 2: Determine the current user based on the definitive list.
