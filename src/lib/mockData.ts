@@ -8,6 +8,7 @@ export const mockUsers: Member[] = [
   { id: 'user-john-02', name: 'John Okello', role: 'member', verificationStatus: 'pending', personalWalletBalance: 250000, phoneNumber: '+256772000002' },
   { id: 'user-fatima-03', name: 'Fatima Diallo', role: 'admin', verificationStatus: 'verified', creditScore: 82, personalWalletBalance: 1200000, phoneNumber: '+256772000003' },
   { id: 'user-david-04', name: 'David Kiptoo', role: 'member', verificationStatus: 'unverified', personalWalletBalance: 100000, phoneNumber: '+256772000004' },
+  { id: 'user-peter-05', name: 'Nuwahereza Peter', role: 'member', verificationStatus: 'verified', creditScore: 68, personalWalletBalance: 300000, phoneNumber: '+256772000005' },
 ];
 
 export const mockMembers: Member[] = mockUsers; // Alias for backward compatibility if needed
