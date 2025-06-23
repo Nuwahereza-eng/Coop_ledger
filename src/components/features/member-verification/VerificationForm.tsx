@@ -56,7 +56,6 @@ export function VerificationForm() {
           videoRef.current.srcObject = stream;
         }
       } catch (error) {
-        console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
         toast({
           variant: 'destructive',
