@@ -24,6 +24,8 @@ export function GroupWalletCard({ wallet }: GroupWalletCardProps) {
     imageHint = "women empowerment";
   }
 
+  const displayToken = wallet.tokenType === 'AppToken' ? '$CL' : wallet.tokenType;
+
   return (
     <Card className="flex flex-col h-full hover:shadow-lg transition-shadow duration-300 bg-card">
       <CardHeader className="p-4 sm:p-6">
@@ -43,12 +45,12 @@ export function GroupWalletCard({ wallet }: GroupWalletCardProps) {
                 data-ai-hint={imageHint}
             />
         </div>
-        <CardDescription className="text-xs sm:text-sm">Managed in {wallet.tokenType}</CardDescription>
+        <CardDescription className="text-xs sm:text-sm">Managed in {displayToken}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow space-y-2 p-4 sm:p-6">
         <div className="flex items-center text-md sm:text-lg">
           <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-500" />
-          <span className="font-semibold text-foreground">Balance: {wallet.balance.toLocaleString()} {wallet.tokenType}</span>
+          <span className="font-semibold text-foreground">Balance: {wallet.balance.toLocaleString()} {displayToken}</span>
         </div>
         <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
           <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
