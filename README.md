@@ -10,6 +10,11 @@
   Transparent and secure savings and micro-loans for communities, built on modern web technologies with a simulated blockchain backend.
 </p>
 
+<p align="center">
+  <img src="https://storage.googleapis.com/project-gameface/images/coop-ledger-screenshot.png" alt="CoopLedger Dashboard Screenshot">
+</p>
+
+
 ---
 
 ## 🚀 Mission
