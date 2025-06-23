@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, Timestamp, addDoc } from 'firebase/firestore';
+import { collection, getDocs, Timestamp, addDoc, query, orderBy, limit } from 'firebase/firestore';
 import type { Transaction, TransactionType } from '@/types';
 import { sha256, serializeTransactionForHashing, GENESIS_HASH } from '@/lib/crypto';
 
@@ -56,21 +56,42 @@ export type NewPersonalTransactionInput = {
 };
 
 export async function addPersonalTransaction(txInput: NewPersonalTransactionInput): Promise<string> {
-    const newTransactionData = {
+    const personalLedgerCollection = collection(db, 'personal_ledger');
+
+    // 1. Find the last transaction to get its hash
+    const q = query(personalLedgerCollection, orderBy('date', 'desc'), limit(1));
+    const lastTxSnapshot = await getDocs(q);
+
+    let previousHash = GENESIS_HASH;
+    if (!lastTxSnapshot.empty) {
+        const lastTx = lastTxSnapshot.docs[0].data() as Transaction;
+        if (lastTx.hash) {
+            previousHash = lastTx.hash;
+        }
+    }
+    
+    // 2. Prepare the new transaction object
+    const newTransactionData: Omit<Transaction, 'hash'> = {
         ...txInput,
         id: `txn-personal-${new Date().getTime()}-${Math.random().toString(16).slice(2)}`,
         date: Timestamp.now(),
-        // Personal transactions don't have a previous hash in this simplified model,
-        // as they aren't part of a specific wallet's chain.
-        // We could fetch all personal txs to find the last one, but that's complex.
-        // For now, we'll omit chaining for personal transactions.
+        previousHash: previousHash,
+    };
+
+    // 3. Generate the hash for the new transaction
+    const hash = await sha256(serializeTransactionForHashing(newTransactionData));
+
+    // 4. Create the final transaction object with the new hash
+    const finalNewTransaction: Transaction & { date: Timestamp } = {
+        ...newTransactionData,
+        hash: hash,
     };
 
     try {
-        const docRef = await addDoc(collection(db, 'personal_ledger'), newTransactionData);
+        const docRef = await addDoc(personalLedgerCollection, finalNewTransaction);
         console.log('[PersonalLedgerService] Personal transaction created successfully with ID:', docRef.id);
         return docRef.id;
-    } catch(error) {
+    } catch (error) {
         console.error("[PersonalLedgerService] Error creating personal transaction: ", error);
         throw new Error(`Could not create personal transaction. Firestore error: ${error instanceof Error ? error.message : String(error)}`);
     }
