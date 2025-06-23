@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -19,7 +20,7 @@ import { cn } from '@/lib/utils';
 const verificationSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters.' }).max(100, {message: "Name too long."}),
   nationalId: z.string().min(5, { message: 'National ID must be valid.' }).max(30, {message: "ID too long."}),
-  phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/, { message: 'Enter a valid phone number (e.g., +1234567890).' }),
+  phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/, { message: 'Enter a valid phone number (e.g., +256772123456).' }),
 });
 
 type VerificationFormData = z.infer<typeof verificationSchema>;
@@ -214,7 +215,7 @@ export function VerificationForm() {
               <FormField control={form.control} name="phoneNumber" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
-                    <FormControl><Input type="tel" placeholder="+254700123456" {...field} /></FormControl>
+                    <FormControl><Input type="tel" placeholder="+256 772 123 456" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
               )}/>
