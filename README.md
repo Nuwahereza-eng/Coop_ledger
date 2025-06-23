@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://storage.googleapis.com/project-gameface/images/coop-ledger-screenshot.png" alt="CoopLedger Dashboard Screenshot">
+  <img src="/public/Screenshot .png" alt="CoopLedger Dashboard Screenshot">
 </p>
 
 
@@ -29,7 +29,7 @@ CoopLedger aims to empower community savings groups (SACCOs), particularly focus
 - **Transparent Records**: An immutable, hash-chained ledger provides a transparent and auditable record of all transactions (contributions, loans, repayments).
 - **Member Verification (KYC)**: A secure, AI-powered identity verification process that hashes personal information on the user's device to protect privacy.
 - **AI-Powered Credit Reputation**: An integrated AI tool analyzes a member's contribution and repayment history to generate a simple, dynamic credit score.
-- **Admin Oversight**: A dedicated dashboard for administrators to manage members, oversee all wallets, and monitor system-wide activity.
+- **Admin Oversight**git config pull.rebase false: A dedicated dashboard for administrators to manage members, oversee all wallets, and monitor system-wide activity.
 - **Personal Wallets**: Each user has a personal wallet to manage their funds before contributing to a group.
 
 ## 🛠️ Technology Stack
