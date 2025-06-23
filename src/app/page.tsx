@@ -10,17 +10,20 @@ import Image from 'next/image';
 import { useRole } from '@/contexts/RoleContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { mockContributions, mockLoans, mockTransactions } from '@/lib/mockData';
-import { getWallets } from '@/services/walletService'; // Import Firestore service
+import { mockLoans, mockTransactions } from '@/lib/mockData';
+import { getWallets } from '@/services/walletService';
+import { getPersonalTransactions } from '@/services/personalLedgerService';
+import { useUser } from '@/contexts/UserContext';
 import type { GroupWallet } from '@/types';
 
 export default function DashboardPage() {
   const { userRole, isRoleInitialized } = useRole();
+  const { currentUser } = useUser();
   const router = useRouter();
 
-  const [wallets, setWallets] = useState<GroupWallet[]>([]); // Added state for wallets
   const [numGroupWallets, setNumGroupWallets] = useState(0);
-  const [isWalletDataLoading, setIsWalletDataLoading] = useState(true);
+  const [totalContributions, setTotalContributions] = useState(0);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   useEffect(() => {
     if (isRoleInitialized && userRole === 'admin') {
@@ -29,40 +32,52 @@ export default function DashboardPage() {
   }, [userRole, isRoleInitialized, router]);
 
   useEffect(() => {
-    if (userRole === 'member' && isRoleInitialized) { // Ensure role is initialized before fetching
+    if (userRole === 'member' && isRoleInitialized && currentUser) {
       async function fetchDashboardData() {
-        console.log('[DashboardPage] Member role detected, fetching wallet data for dashboard.');
-        setIsWalletDataLoading(true);
+        console.log('[DashboardPage] Member role detected, fetching data for dashboard.');
+        setIsDataLoading(true);
         try {
-          const fetchedWallets = await getWallets();
-          console.log('[DashboardPage] Fetched wallets for dashboard count:', fetchedWallets);
-          setWallets(fetchedWallets); // Update wallets state
-          setNumGroupWallets(fetchedWallets.length);
+          const [fetchedWallets, personalTxs] = await Promise.all([
+            getWallets(),
+            getPersonalTransactions()
+          ]);
+          
+          // --- Group Wallets Data ---
+          const memberWallets = fetchedWallets.filter(wallet =>
+            wallet.members.some(member => member.id === currentUser.id)
+          );
+          setNumGroupWallets(memberWallets.length);
+
+          // --- Contributions Data ---
+          const allGroupTxs = fetchedWallets.flatMap(w => w.transactions || []);
+          const allTxs = [...allGroupTxs, ...personalTxs];
+          
+          const userContributions = allTxs
+            .filter(tx => tx.memberId === currentUser.id && (tx.type === 'contribution' || tx.type === 'personal_deposit'))
+            .reduce((sum, tx) => sum + tx.amount, 0);
+            
+          setTotalContributions(userContributions);
+
         } catch (error) {
-          console.error("[DashboardPage] Error fetching wallet data for dashboard:", error);
-          // Potentially set an error state to display to the user
+          console.error("[DashboardPage] Error fetching data for dashboard:", error);
         } finally {
-          setIsWalletDataLoading(false);
-          console.log('[DashboardPage] Finished fetching wallet data for dashboard.');
+          setIsDataLoading(false);
+          console.log('[DashboardPage] Finished fetching data for dashboard.');
         }
       }
       fetchDashboardData();
-    } else if (userRole !== 'member') {
-        // If not a member, no need to load member-specific wallet data
-        setIsWalletDataLoading(false);
+    } else if (!isRoleInitialized || userRole !== 'member' || !currentUser) {
+        setIsDataLoading(false);
     }
-  }, [userRole, isRoleInitialized]);
+  }, [userRole, isRoleInitialized, currentUser]);
 
 
-  // Calculate dynamic data for member features
-  // For now, only numGroupWallets is from Firestore. Others remain mock.
-  const totalContributions = mockContributions.reduce((sum, contrib) => sum + contrib.amount, 0);
   const numActiveLoans = mockLoans.filter(loan => loan.status === 'active').length;
   const numTotalTransactions = mockTransactions.length;
 
   const memberFeatures = [
-    { title: 'Group Wallets', description: `Access and manage ${isWalletDataLoading && userRole === 'member' ? '...' : numGroupWallets} collective savings group wallets.`, icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'community finance' },
-    { title: 'Contributions', description: `Contribute tokens to your group. Total contributed: ${totalContributions.toLocaleString()} UGX.`, icon: Wallet, href: '/contributions', cta: 'Make Contribution', img: 'https://images.unsplash.com/photo-1637597384601-61e937e8bc15?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'digital currency' },
+    { title: 'Group Wallets', description: `Access and manage ${isDataLoading ? '...' : numGroupWallets} collective savings group wallets.`, icon: Landmark, href: '/wallets', cta: 'View Wallets', img: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'community finance' },
+    { title: 'Contributions', description: `Your total contributions stand at ${isDataLoading ? '...' : totalContributions.toLocaleString()} UGX.`, icon: Wallet, href: '/contributions', cta: 'Make Contribution', img: 'https://images.unsplash.com/photo-1637597384601-61e937e8bc15?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'digital currency' },
     { title: 'Smart Loans', description: `Access automated micro-loans. ${numActiveLoans} loans currently active.`, icon: Repeat, href: '/loans', cta: 'Apply for Loan', img: 'https://plus.unsplash.com/premium_photo-1677265809324-4cc68b8cc4e7?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'loan agreement' },
     { title: 'Transparent Records', description: `View all ${numTotalTransactions} immutable transactions on the ledger.`, icon: History, href: '/records', cta: 'See Ledger', img: 'https://plus.unsplash.com/premium_photo-1682125773446-259ce64f9dd7?q=80&w=2071&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'transaction history' },
     { title: 'Member Verification', description: 'Secure your identity with mobile KYC. Complete your verification to enhance trust.', icon: UserCheck, href: '/verify', cta: 'Verify Now', img: 'https://plus.unsplash.com/premium_photo-1677093906217-9420a5f16322?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', hint: 'identity security' },
@@ -70,14 +85,13 @@ export default function DashboardPage() {
   ];
 
 
-  if (!isRoleInitialized || userRole === 'admin' || (userRole === 'member' && isWalletDataLoading && numGroupWallets === 0 && wallets.length === 0 )) { // Ensure initial state is also considered
-    // Show loading or null while redirecting or if role is not initialized or initial data is loading
+  if (!isRoleInitialized || userRole === 'admin' || isDataLoading) {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
            {isRoleInitialized && userRole === 'admin' && <p className="mt-4 text-muted-foreground">Redirecting to Admin Dashboard...</p>}
-           {isRoleInitialized && userRole === 'member' && isWalletDataLoading && <p className="mt-4 text-muted-foreground">Loading dashboard data...</p>}
+           {isRoleInitialized && userRole === 'member' && isDataLoading && <p className="mt-4 text-muted-foreground">Loading dashboard data...</p>}
            {!isRoleInitialized && <p className="mt-4 text-muted-foreground">Initializing app...</p>}
         </div>
       </AppLayout>
