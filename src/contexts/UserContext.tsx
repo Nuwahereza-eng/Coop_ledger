@@ -26,7 +26,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     try {
       // 1. Start with the base mock users as the source of truth for default accounts.
       const definitiveUsers = [...mockUsers];
-      const definitiveUserMap = new Map(definitiveUsers.map(u => u.id));
+      const definitiveUserMap = new Map(definitiveUsers.map(u => [u.id, u]));
       
       // 2. Load any additional users from localStorage (e.g., accounts created via signup).
       const storedUsersItem = localStorage.getItem('users');
