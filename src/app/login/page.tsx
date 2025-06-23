@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Landmark, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -75,7 +76,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
        <div className="absolute top-8 flex items-center gap-2 text-lg font-semibold font-headline">
-          <Landmark className="h-7 w-7 text-primary" />
+          <Image src="/icon.svg" alt="CoopLedger Logo" width={28} height={28} />
           <span className="text-primary">Coop</span><span className="text-foreground">Ledger</span>
        </div>
       <Card className="w-full max-w-sm shadow-2xl">
