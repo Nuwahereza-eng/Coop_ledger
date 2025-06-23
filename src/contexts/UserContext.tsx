@@ -18,60 +18,61 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers] = useState<Member[]>(mockUsers);
+  const [users, setUsers] = useState<Member[]>([]);
   const [currentUser, setCurrentUser] = useState<Member | null>(null);
   const [isUserInitialized, setIsUserInitialized] = useState(false);
 
   useEffect(() => {
     try {
-      const storedUsersItem = localStorage.getItem('users');
-      const storedUserItem = localStorage.getItem('currentUser');
-
-      // Step 1: Determine the definitive list of users, with a check for outdated data.
-      let definitiveUsers = mockUsers;
-      if (storedUsersItem) {
-        try {
-          const parsedUsers = JSON.parse(storedUsersItem) as Member[];
-          // Simple migration: if the first user doesn't have a phone number, the data is old.
-          if (Array.isArray(parsedUsers) && parsedUsers.length > 0 && parsedUsers[0]?.phoneNumber) {
-            // Data looks new enough, use it.
-            definitiveUsers = parsedUsers;
-          } else {
-            // Data is old. Log it, and fall through to use fresh mockUsers.
-            console.log('Outdated user data in localStorage. Re-initializing with fresh mock data.');
-          }
-        } catch (e) {
-          console.error("Failed to parse 'users' from localStorage, falling back to mock data.", e);
-          // Fall through to use mockUsers
-        }
-      }
+      // 1. Start with the base mock users as the source of truth for default accounts.
+      const definitiveUsers = [...mockUsers];
+      const definitiveUserMap = new Map(definitiveUsers.map(u => u.id));
       
-      // If we fell through (or there was no stored data), definitiveUsers is mockUsers. 
-      // Let's ensure localStorage is updated to the latest version.
-      if (definitiveUsers === mockUsers) {
-          localStorage.setItem('users', JSON.stringify(mockUsers));
+      // 2. Load any additional users from localStorage (e.g., accounts created via signup).
+      const storedUsersItem = localStorage.getItem('users');
+      if (storedUsersItem) {
+          try {
+              const parsedUsers = JSON.parse(storedUsersItem) as Member[];
+              if (Array.isArray(parsedUsers)) {
+                  for (const storedUser of parsedUsers) {
+                      // Add stored user only if they are not in the base mock list and have a valid structure.
+                      if (!definitiveUserMap.has(storedUser.id) && storedUser.id && storedUser.phoneNumber) {
+                          definitiveUsers.push(storedUser);
+                          definitiveUserMap.set(storedUser.id, storedUser);
+                      }
+                  }
+              }
+          } catch (e) {
+              console.error("Could not parse 'users' from localStorage. Re-initializing.", e);
+          }
       }
 
+      // 3. Set the combined user list and persist it back. This synchronizes localStorage with the latest mock data.
       setUsers(definitiveUsers);
+      localStorage.setItem('users', JSON.stringify(definitiveUsers));
 
-      // Step 2: Determine the current user based on the definitive list.
+      // 4. Load the current user and ensure they exist in our definitive list.
+      const storedUserItem = localStorage.getItem('currentUser');
       if (storedUserItem && storedUserItem !== 'null' && storedUserItem !== 'undefined') {
         try {
-            const storedUser = JSON.parse(storedUserItem) as Member;
-            // Find the user in the *definitive* list we just established.
-            const userInList = definitiveUsers.find(u => u.id === storedUser.id);
-            setCurrentUser(userInList || null);
-        } catch(e) {
-            console.error("Failed to parse 'currentUser' from localStorage", e);
-            setCurrentUser(null);
+          const storedUser = JSON.parse(storedUserItem) as Member;
+          // Find the user in our definitive list to ensure data is fresh.
+          const freshUser = definitiveUserMap.get(storedUser.id);
+          setCurrentUser(freshUser || null);
+        } catch (e) {
+          console.error("Failed to parse 'currentUser' from localStorage", e);
+          setCurrentUser(null);
         }
       } else {
         setCurrentUser(null);
       }
+
     } catch (error) {
         console.error("An unexpected error occurred during user initialization:", error);
+        // Fallback to safe state
         setCurrentUser(null);
         setUsers(mockUsers);
+        localStorage.setItem('users', JSON.stringify(mockUsers));
     } finally {
         setIsUserInitialized(true);
     }
