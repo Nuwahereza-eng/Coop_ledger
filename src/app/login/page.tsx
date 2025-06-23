@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -91,7 +90,7 @@ export default function LoginPage() {
               <Input
                 id="phoneNumber"
                 type="tel"
-                placeholder="+256772123456"
+                placeholder="+256 772 123 456"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 required

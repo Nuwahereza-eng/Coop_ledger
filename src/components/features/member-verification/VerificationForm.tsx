@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -15,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { verifyMember, type VerifyMemberOutput } from '@/ai/flows/verify-member-flow';
 import { useUser } from '@/contexts/UserContext';
+import { cn } from '@/lib/utils';
 
 const verificationSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name must be at least 3 characters.' }).max(100, {message: "Name too long."}),
@@ -42,37 +42,42 @@ export function VerificationForm() {
   const [idFront, setIdFront] = useState<File | null>(null);
   const [idBack, setIdBack] = useState<File | null>(null);
   const [livenessPhoto, setLivenessPhoto] = useState<string | null>(null);
+  
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [isCameraLive, setIsCameraLive] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    const getCameraPermission = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        setHasCameraPermission(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use this feature.',
-        });
+  const handleEnableCamera = async () => {
+    try {
+      const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setStream(cameraStream);
+      setHasCameraPermission(true);
+      setIsCameraLive(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = cameraStream;
       }
-    };
-    getCameraPermission();
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setHasCameraPermission(false);
+      setIsCameraLive(false);
+      toast({
+        variant: 'destructive',
+        title: 'Camera Access Denied',
+        description: 'Please enable camera permissions in your browser settings to use this feature.',
+      });
+    }
+  };
 
+  useEffect(() => {
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
+      if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [toast]);
+  }, [stream]);
 
   const handleCaptureLiveness = () => {
     if (videoRef.current && canvasRef.current) {
@@ -239,22 +244,30 @@ export function VerificationForm() {
                 <h3 className="font-semibold text-lg text-foreground">Step 3: Liveness Check</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                     <div className="relative rounded-md overflow-hidden border bg-muted aspect-video flex items-center justify-center">
-                        <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                        <video ref={videoRef} className={cn("w-full h-full object-cover", !isCameraLive && 'hidden')} autoPlay muted playsInline />
                         <canvas ref={canvasRef} className="hidden" />
-                        {hasCameraPermission === false && (
-                            <Alert variant="destructive" className="m-4">
-                                <AlertTitle>Camera Access Required</AlertTitle>
-                                <AlertDescription>Please allow camera access to use this feature.</AlertDescription>
-                            </Alert>
-                        )}
-                         {hasCameraPermission === null && (
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        
+                        {!isCameraLive && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-muted-foreground">
+                                <Camera className="h-12 w-12 mb-4" />
+                                {hasCameraPermission === false ? (
+                                    <p className="font-bold text-destructive">Camera Access Denied</p>
+                                ) : (
+                                    <p className="text-sm">Click "Enable Camera" to start the liveness check.</p>
+                                )}
+                            </div>
                         )}
                     </div>
                     <div className="space-y-4">
-                        <Button type="button" onClick={handleCaptureLiveness} disabled={!hasCameraPermission} className="w-full">
-                            <Camera className="mr-2 h-4 w-4" /> Capture Photo
-                        </Button>
+                        {!isCameraLive ? (
+                            <Button type="button" onClick={handleEnableCamera} className="w-full">
+                                <Camera className="mr-2 h-4 w-4" /> Enable Camera
+                            </Button>
+                        ) : (
+                            <Button type="button" onClick={handleCaptureLiveness} className="w-full">
+                                <Camera className="mr-2 h-4 w-4" /> Capture Photo
+                            </Button>
+                        )}
                         {livenessPhoto && (
                             <div className="relative rounded-md overflow-hidden border bg-muted aspect-video flex items-center justify-center">
                                 <img src={livenessPhoto} alt="Liveness capture" className="w-full h-full object-cover"/>
